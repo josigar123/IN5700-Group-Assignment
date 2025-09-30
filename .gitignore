@@ -1,0 +1,18 @@
+# OMNeT++ build files
+out/
+makefile
+*.o
+*.d
+*.exe
+*.dll
+*.so
+*.obj
+*.app
+*.log
+*.vec
+*.sca
+*.vci
+*.bak
+*.tmp
+*.swp
+
