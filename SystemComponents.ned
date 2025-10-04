@@ -15,39 +15,59 @@
 
 simple Node
 {
+    parameters:
+        double x;
+        double y;
+        double range = default(300);
+        string rangeColor = default("green");
+        @display("p=$x,$y");
+        @class(Node);
+
     gates:
-        input in[];   // Array of input gates
-        output out[]; // Array of output gates
+        input in[];
+        output out[];
 }
 
 network GarbageInTheCanAndSlow
 {
-    @display("bgb=3000, 1250");
+    @display("bgb=3000,1250");
 
     @figure[outerroad](type=polyline; points=1700,200,150,200,150,1100,1700,1100; lineColor=black; lineWidth=4);
-	@figure[innerroad](type=polyline; points=1700,450,400,450,400,850,1700,850; lineColor=black; lineWidth=4);
-	
+    @figure[innerroad](type=polyline; points=1700,450,400,450,400,850,1700,850; lineColor=black; lineWidth=4);
+
     submodules:
         host: Node {
-            @display("p=1750, 300;i=block/wheelbarrow");
+            x = 1750;
+            y = 300;
+            range = 300;
+            @display("p=1750,300;i=block/wheelbarrow");
         }
         can: Node {
+            x = 500;
+            y = 150;
+            range = 320;
             @display("p=500,150;i=block/bucket");
         }
         anotherCan: Node {
+            x = 573.885;
+            y = 754.65;
+            range = 320;
             @display("p=573.885,754.65;i=block/bucket");
         }
         cloud: Node {
+            x = 1900;
+            y = 650;
+            range = 1600;
             @display("p=1900,650;i=device/server");
-            
         }
+        
     connections:
-        host.out++ --> {  delay = 100ms; } --> can.in++;
-        host.in++ <-- {  delay = 100ms; } <-- can.out++;
-        host.out++ --> {  delay = 100ms; } --> anotherCan.in++;
-        host.in++ <-- {  delay = 100ms; } <-- anotherCan.out++;
-        host.out++ --> {  delay = 100ms; } --> cloud.in++;
-        host.in++ <-- {  delay = 100ms; } <-- cloud.out++;
+        host.out++ --> { delay = 100ms; } --> can.in++;
+        host.in++ <-- { delay = 100ms; } <-- can.out++;
+        host.out++ --> { delay = 100ms; } --> anotherCan.in++;
+        host.in++ <-- { delay = 100ms; } <-- anotherCan.out++;
+        host.out++ --> { delay = 100ms; } --> cloud.in++;
+        host.in++ <-- { delay = 100ms; } <-- cloud.out++;
 }
 
 network GarbageInTheCanAndFast
@@ -59,27 +79,39 @@ network GarbageInTheCanAndFast
 	
     submodules:
         host: Node {
+            x = 1750;
+            y = 300;
+            range = 300;
             @display("p=1750, 300;i=block/wheelbarrow");
         }
         can: Node {
+            x = 500;
+            y = 150;
+            range = 200;
             @display("p=500,150;i=block/bucket");
         }
         anotherCan: Node {
+            x = 573.885;
+            y = 754.65;
+            range = 200;
             @display("p=573.885,754.65;i=block/bucket");
         }
         cloud: Node {
+            x = 1900;
+            y = 650;
+            range = 400;
             @display("p=1900,650;i=device/server");
             
         }
     connections:
-        host.out --> {  delay = 100ms; } --> can.in;
-        host.in <-- {  delay = 100ms; } <-- can.out;
-        host.out --> {  delay = 100ms; } --> anotherCan.in;
-        host.in <-- {  delay = 100ms; } <-- anotherCan.out;
-        can.out --> {  delay = 100ms; } --> cloud.in;
-        can.in <-- {  delay = 100ms; } <-- cloud.out;
-        anotherCan.out --> {  delay = 100ms; } --> cloud.in;
-        anotherCan.in <-- {  delay = 100ms; } <-- cloud.out;
+        host.out++ --> {  delay = 100ms; } --> can.in++;
+        host.in++ <-- {  delay = 100ms; } <-- can.out++;
+        host.out++ --> {  delay = 100ms; } --> anotherCan.in++;
+        host.in++ <-- {  delay = 100ms; } <-- anotherCan.out++;
+        can.out++ --> {  delay = 100ms; } --> cloud.in++;
+        can.in++ <-- {  delay = 100ms; } <-- cloud.out++;
+        anotherCan.out++ --> {  delay = 100ms; } --> cloud.in++;
+        anotherCan.in++ <-- {  delay = 100ms; } <-- cloud.out++;
 }
 
 network NoGarbageInTheCans
@@ -91,24 +123,36 @@ network NoGarbageInTheCans
 	
     submodules:
         host: Node {
+            x = 1750;
+            y = 300;
+            range = 300;
             @display("p=1750, 300;i=block/wheelbarrow");
         }
         can: Node {
+            x = 500;
+            y = 150;
+            range = 200;
             @display("p=500,150;i=block/bucket");
         }
         anotherCan: Node {
+            x = 573.885;
+            y = 754.65;
+            range = 200;
             @display("p=573.885,754.65;i=block/bucket");
         }
         cloud: Node {
+            x = 1900;
+            y = 650;
+            range = 400;
             @display("p=1900,650;i=device/server");
             
         }
 
     connections:
-        host.out --> {  delay = 100ms; } --> can.in;
-        host.in <-- {  delay = 100ms; } <-- can.out;
-        host.out --> {  delay = 100ms; } --> anotherCan.in;
-        host.in <-- {  delay = 100ms; } <-- anotherCan.out;
+        host.out++ --> {  delay = 100ms; } --> can.in++;
+        host.in++ <-- {  delay = 100ms; } <-- can.out++;
+        host.out++ --> {  delay = 100ms; } --> anotherCan.in++;
+        host.in++ <-- {  delay = 100ms; } <-- anotherCan.out++;
 }
 
 
