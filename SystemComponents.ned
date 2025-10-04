@@ -20,33 +20,27 @@ simple Node
         output out[]; // Array of output gates
 }
 
-simple Visualizer
-{
-    @display("bgb=800,500");
-    @figure[box](type=rectangle; pos=10,50; size=200,100; fillColor=green);
-    @figure[box.label](type=text; pos=20,80; text=placeholder);
-}
-
 network GarbageInTheCanAndSlow
 {
-    @display("bgb=1400,500");
-    @figure[box](type=rectangle; pos=10,50; size=200,100; fillColor=green);
-    @figure[box.label](type=text; pos=20,80; text="placeholder");
+    @display("bgb=3000, 1250");
 
+    @figure[outerroad](type=polyline; points=1700,200,150,200,150,1100,1700,1100; lineColor=black; lineWidth=4);
+	@figure[innerroad](type=polyline; points=1700,450,400,450,400,850,1700,850; lineColor=black; lineWidth=4);
+	
     submodules:
         host: Node {
-            @display("p=808,320");
+            @display("p=1750, 300;i=block/wheelbarrow");
         }
         can: Node {
-            @display("p=396,176");
+            @display("p=500,150;i=block/bucket");
         }
         anotherCan: Node {
-            @display("p=416,327");
+            @display("p=573.885,754.65;i=block/bucket");
         }
         cloud: Node {
-            @display("p=924,185");
+            @display("p=1900,650;i=device/server");
+            
         }
-
     connections:
         host.out++ --> {  delay = 100ms; } --> can.in++;
         host.in++ <-- {  delay = 100ms; } <-- can.out++;
@@ -58,20 +52,25 @@ network GarbageInTheCanAndSlow
 
 network GarbageInTheCanAndFast
 {
+    @display("bgb=3000, 1250");
+
+    @figure[outerroad](type=polyline; points=1700,200,150,200,150,1100,1700,1100; lineColor=black; lineWidth=4);
+	@figure[innerroad](type=polyline; points=1700,450,400,450,400,850,1700,850; lineColor=black; lineWidth=4);
+	
     submodules:
         host: Node {
-            @display("p=399,180");
+            @display("p=1750, 300;i=block/wheelbarrow");
         }
         can: Node {
-            @display("p=421,63");
+            @display("p=500,150;i=block/bucket");
         }
         anotherCan: Node {
-            @display("p=405,300");
+            @display("p=573.885,754.65;i=block/bucket");
         }
         cloud: Node {
-            @display("p=880,229");
+            @display("p=1900,650;i=device/server");
+            
         }
-
     connections:
         host.out --> {  delay = 100ms; } --> can.in;
         host.in <-- {  delay = 100ms; } <-- can.out;
@@ -85,18 +84,24 @@ network GarbageInTheCanAndFast
 
 network NoGarbageInTheCans
 {
+    @display("bgb=3000, 1250");
+
+    @figure[outerroad](type=polyline; points=1700,200,150,200,150,1100,1700,1100; lineColor=black; lineWidth=4);
+	@figure[innerroad](type=polyline; points=1700,450,400,450,400,850,1700,850; lineColor=black; lineWidth=4);
+	
     submodules:
         host: Node {
-            @display("p=792,131");
+            @display("p=1750, 300;i=block/wheelbarrow");
         }
         can: Node {
-            @display("p=421,63");
+            @display("p=500,150;i=block/bucket");
         }
         anotherCan: Node {
-            @display("p=405,300");
+            @display("p=573.885,754.65;i=block/bucket");
         }
         cloud: Node {
-            @display("p=930,184");
+            @display("p=1900,650;i=device/server");
+            
         }
 
     connections:
