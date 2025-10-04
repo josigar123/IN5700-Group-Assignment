@@ -13,6 +13,9 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 //
 
+import inet.mobility.contract.IMobility;
+import inet.mobility.single.TurtleMobility;
+
 simple Node
 {
     parameters:
@@ -29,6 +32,38 @@ simple Node
         
 }
 
+module MobileNode {
+    
+    parameters:
+        double x;
+        double y;
+        double range = default(300);
+        @display("i=block/wheelbarrow");
+        
+    gates:
+        input in[];
+        output out[];
+        
+    submodules:
+        mobility: TurtleMobility{
+        	@display("p=100,100");
+        }
+        node: Node {
+            x = parent.x;
+            y = parent.y;
+        	range = parent.range;
+        }
+        
+    connections allowunconnected:
+        for i=0..sizeof(in)-1 {
+            in[i] --> node.in++;
+        }
+        for i=0..sizeof(out)-1 {
+            node.out++ --> out[i];
+        }
+
+}
+
 network GarbageInTheCanAndSlow
 {
     @display("bgb=3000,1250");
@@ -39,11 +74,14 @@ network GarbageInTheCanAndSlow
     @figure[innerroad](type=polyline; points=1700,450,400,450,400,850,1700,850; lineColor=black; lineWidth=4);
 
     submodules:
-        host: Node {
+        host: MobileNode {
             x = 1750;
             y = 300;
             range = 300;
-            @display("p=1750,300;i=block/wheelbarrow");
+            mobility.constraintAreaMinX = 150m;
+            mobility.constraintAreaMinY = 200m;
+            mobility.constraintAreaMaxX = 1700m;
+            mobility.constraintAreaMaxY = 1100m;
         }
         can: Node {
             x = 500;
