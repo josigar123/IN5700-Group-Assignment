@@ -26,11 +26,14 @@ simple Node
     gates:
         input in[];
         output out[];
+        
 }
 
 network GarbageInTheCanAndSlow
 {
     @display("bgb=3000,1250");
+	@display("a=none");
+	
 
     @figure[outerroad](type=polyline; points=1700,200,150,200,150,1100,1700,1100; lineColor=black; lineWidth=4);
     @figure[innerroad](type=polyline; points=1700,450,400,450,400,850,1700,850; lineColor=black; lineWidth=4);
@@ -62,12 +65,12 @@ network GarbageInTheCanAndSlow
         }
         
     connections:
-        host.out++ --> { delay = 100ms; } --> can.in++;
-        host.in++ <-- { delay = 100ms; } <-- can.out++;
-        host.out++ --> { delay = 100ms; } --> anotherCan.in++;
-        host.in++ <-- { delay = 100ms; } <-- anotherCan.out++;
-        host.out++ --> { delay = 100ms; } --> cloud.in++;
-        host.in++ <-- { delay = 100ms; } <-- cloud.out++;
+        host.out++ --> { @display("ls=green,1"); delay = 100ms; } --> can.in++;
+        host.in++ <-- { @display("ls=green,1"); delay = 100ms; } <-- can.out++;
+        host.out++ --> { @display("ls=green,1"); delay = 100ms; } --> anotherCan.in++;
+        host.in++ <-- { @display("ls=green,1"); delay = 100ms; } <-- anotherCan.out++;
+        host.out++ --> { @display("ls=green,1"); delay = 100ms; } --> cloud.in++;
+        host.in++ <-- { @display("ls=green,1"); delay = 100ms; } <-- cloud.out++;
 }
 
 network GarbageInTheCanAndFast
