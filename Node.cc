@@ -22,13 +22,21 @@ Define_Module(Node);
 
 void Node::initialize()
 {
+    EV << "INITIALIZING NODE: " << getFullPath() << "\n";
+
     // Get parameters
     double x = par("x");
     double y = par("y");
     double range = par("range");
 
+    cModule *network = getParentModule();
+    while (network->getParentModule() != nullptr) {
+            network = network->getParentModule();
+    }
+
+    cCanvas *canvas = network->getCanvas();
+
     // Get the network's canvas
-    cCanvas *canvas = getParentModule()->getCanvas();
 
     // Create unique name for this node's coverage circle
     std::string figureName = std::string("coverage_") + getName();
@@ -52,10 +60,6 @@ void Node::initialize()
 
 void Node::handleMessage(cMessage *msg)
 {
-    int n = gateSize("out");
-    if (n > 0) {
-        int k = intuniform(0, n-1);  // Pick a random output gate
-        send(msg, "out", k);
-    }
+    delete msg;
 }
 

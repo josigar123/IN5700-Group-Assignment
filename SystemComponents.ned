@@ -23,13 +23,13 @@ simple Node
         double y;
         double range = default(300);
         string rangeColor = default("green");
+        int numGates = default(3);
         @display("p=$x,$y");
         @class(Node);
 
     gates:
-        input in[];
-        output out[];
-        
+        inout gate[numGates];
+       
 }
 
 module MobileNode {
@@ -38,37 +38,30 @@ module MobileNode {
         double x;
         double y;
         double range = default(300);
-        @display("i=block/wheelbarrow");
+        int numGates = default(3);
+        @display("p=1750, 300;i=block/wheelbarrow");
         
     gates:
-        input in[];
-        output out[];
+        inout gate[numGates];
         
     submodules:
-        mobility: TurtleMobility{
-        	@display("p=100,100");
-        }
+        mobility: TurtleMobility;
         node: Node {
             x = parent.x;
             y = parent.y;
-        	range = parent.range;
+            range = parent.range;
+            numGates = parent.numGates;
         }
         
-    connections allowunconnected:
-        for i=0..sizeof(in)-1 {
-            in[i] --> node.in++;
+    connections:
+        for i=0..numGates-1 {
+            gate[i] <--> node.gate[i];
         }
-        for i=0..sizeof(out)-1 {
-            node.out++ --> out[i];
-        }
-
 }
 
 network GarbageInTheCanAndSlow
 {
     @display("bgb=3000,1250");
-	@display("a=none");
-	
 
     @figure[outerroad](type=polyline; points=1700,200,150,200,150,1100,1700,1100; lineColor=black; lineWidth=4);
     @figure[innerroad](type=polyline; points=1700,450,400,450,400,850,1700,850; lineColor=black; lineWidth=4);
@@ -78,37 +71,34 @@ network GarbageInTheCanAndSlow
             x = 1750;
             y = 300;
             range = 300;
-            mobility.constraintAreaMinX = 150m;
-            mobility.constraintAreaMinY = 200m;
-            mobility.constraintAreaMaxX = 1700m;
-            mobility.constraintAreaMaxY = 1100m;
+            numGates = 3;
         }
         can: Node {
             x = 500;
             y = 150;
             range = 320;
+            numGates = 1;
             @display("p=500,150;i=block/bucket");
         }
         anotherCan: Node {
             x = 573.885;
             y = 754.65;
             range = 320;
+            numGates = 1;
             @display("p=573.885,754.65;i=block/bucket");
         }
         cloud: Node {
             x = 1900;
             y = 650;
             range = 1600;
+            numGates = 1;
             @display("p=1900,650;i=device/server");
         }
         
     connections:
-        host.out++ --> { @display("ls=green,1"); delay = 100ms; } --> can.in++;
-        host.in++ <-- { @display("ls=green,1"); delay = 100ms; } <-- can.out++;
-        host.out++ --> { @display("ls=green,1"); delay = 100ms; } --> anotherCan.in++;
-        host.in++ <-- { @display("ls=green,1"); delay = 100ms; } <-- anotherCan.out++;
-        host.out++ --> { @display("ls=green,1"); delay = 100ms; } --> cloud.in++;
-        host.in++ <-- { @display("ls=green,1"); delay = 100ms; } <-- cloud.out++;
+        host.gate[0] <--> can.gate[0];
+        host.gate[1] <--> anotherCan.gate[0];
+    	host.gate[2] <--> cloud.gate[0];
 }
 
 network GarbageInTheCanAndFast
@@ -119,40 +109,39 @@ network GarbageInTheCanAndFast
 	@figure[innerroad](type=polyline; points=1700,450,400,450,400,850,1700,850; lineColor=black; lineWidth=4);
 	
     submodules:
-        host: Node {
+        host: MobileNode {
             x = 1750;
             y = 300;
             range = 300;
-            @display("p=1750, 300;i=block/wheelbarrow");
+            numGates = 2;
         }
         can: Node {
             x = 500;
             y = 150;
             range = 200;
+            numGates = 2;
             @display("p=500,150;i=block/bucket");
         }
         anotherCan: Node {
             x = 573.885;
             y = 754.65;
             range = 200;
+            numGates = 2;
             @display("p=573.885,754.65;i=block/bucket");
         }
         cloud: Node {
             x = 1900;
             y = 650;
             range = 400;
+            numGates = 2;
             @display("p=1900,650;i=device/server");
             
         }
     connections:
-        host.out++ --> {  delay = 100ms; } --> can.in++;
-        host.in++ <-- {  delay = 100ms; } <-- can.out++;
-        host.out++ --> {  delay = 100ms; } --> anotherCan.in++;
-        host.in++ <-- {  delay = 100ms; } <-- anotherCan.out++;
-        can.out++ --> {  delay = 100ms; } --> cloud.in++;
-        can.in++ <-- {  delay = 100ms; } <-- cloud.out++;
-        anotherCan.out++ --> {  delay = 100ms; } --> cloud.in++;
-        anotherCan.in++ <-- {  delay = 100ms; } <-- cloud.out++;
+        host.gate[0] <--> can.gate[0];
+        host.gate[1] <--> anotherCan.gate[0];
+        can.gate[1] <--> cloud.gate[0];
+        anotherCan.gate[1] <--> cloud.gate[1];
 }
 
 network NoGarbageInTheCans
@@ -163,37 +152,38 @@ network NoGarbageInTheCans
 	@figure[innerroad](type=polyline; points=1700,450,400,450,400,850,1700,850; lineColor=black; lineWidth=4);
 	
     submodules:
-        host: Node {
+        host: MobileNode {
             x = 1750;
             y = 300;
             range = 300;
-            @display("p=1750, 300;i=block/wheelbarrow");
+            numGates = 2;
         }
         can: Node {
             x = 500;
             y = 150;
             range = 200;
+            numGates = 1;
             @display("p=500,150;i=block/bucket");
         }
         anotherCan: Node {
             x = 573.885;
             y = 754.65;
             range = 200;
+            numGates = 1;
             @display("p=573.885,754.65;i=block/bucket");
         }
         cloud: Node {
             x = 1900;
             y = 650;
             range = 400;
+            numGates = 0;
             @display("p=1900,650;i=device/server");
             
         }
 
     connections:
-        host.out++ --> {  delay = 100ms; } --> can.in++;
-        host.in++ <-- {  delay = 100ms; } <-- can.out++;
-        host.out++ --> {  delay = 100ms; } --> anotherCan.in++;
-        host.in++ <-- {  delay = 100ms; } <-- anotherCan.out++;
+        host.gate[0] <--> can.gate[0];
+        host.gate[1] <--> anotherCan.gate[0];
 }
 
 
