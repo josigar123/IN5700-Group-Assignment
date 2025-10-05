@@ -185,7 +185,3 @@ network NoGarbageInTheCans
         host.gate[0] <--> can.gate[0];
         host.gate[1] <--> anotherCan.gate[0];
 }
-
-
-
-
