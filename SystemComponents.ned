@@ -15,6 +15,7 @@
 
 import inet.mobility.contract.IMobility;
 import inet.mobility.single.TurtleMobility;
+import inet.visualizer.canvas.integrated.IntegratedCanvasVisualizer;
 
 simple Node
 {
@@ -39,7 +40,7 @@ module MobileNode {
         double y;
         double range = default(300);
         int numGates = default(3);
-        @display("p=1750, 300;i=block/wheelbarrow");
+        @display("i=block/wheelbarrow");
         
     gates:
         inout gate[numGates];
@@ -59,7 +60,7 @@ module MobileNode {
         }
 }
 
-network GarbageInTheCanAndSlow
+network GarbageCollectionSystem
 {
     @display("bgb=3000,1250");
 
@@ -67,121 +68,41 @@ network GarbageInTheCanAndSlow
     @figure[innerroad](type=polyline; points=1700,450,400,450,400,850,1700,850; lineColor=black; lineWidth=4);
 
     submodules:
+        visualizer: IntegratedCanvasVisualizer{
+        	@display("p=1500,50");
+        }
         host: MobileNode {
             x = 1750;
             y = 300;
             range = 300;
-            numGates = 3;
         }
-        can: Node {
+        can: Node  {
             x = 500;
             y = 150;
             range = 320;
-            numGates = 1;
-            @display("p=500,150;i=block/bucket");
+            numGates = 2;
+            @display("i=block/bucket");
         }
         anotherCan: Node {
             x = 573.885;
             y = 754.65;
-            range = 320;
-            numGates = 1;
-            @display("p=573.885,754.65;i=block/bucket");
+        	range = 320;
+        	numGates = 2;
+        	@display("i=block/bucket");
         }
         cloud: Node {
-            x = 1900;
-            y = 650;
-            range = 1600;
-            numGates = 1;
-            @display("p=1900,650;i=device/server");
+        	x = 1900;
+        	y = 650;
+        	range = 1600;
+        	@display("i=device/server");
         }
+	
+    connections:
+        host.gate[0] <--> can.gate[0];
+        host.gate[1] <--> anotherCan.gate[0];
+        host.gate[2] <--> cloud.gate[0];
         
-    connections:
-        host.gate[0] <--> can.gate[0];
-        host.gate[1] <--> anotherCan.gate[0];
-    	host.gate[2] <--> cloud.gate[0];
+        can.gate[1] <--> cloud.gate[1];
+        anotherCan.gate[1] <--> cloud.gate[2];
 }
 
-network GarbageInTheCanAndFast
-{
-    @display("bgb=3000, 1250");
-
-    @figure[outerroad](type=polyline; points=1700,200,150,200,150,1100,1700,1100; lineColor=black; lineWidth=4);
-	@figure[innerroad](type=polyline; points=1700,450,400,450,400,850,1700,850; lineColor=black; lineWidth=4);
-	
-    submodules:
-        host: MobileNode {
-            x = 1750;
-            y = 300;
-            range = 300;
-            numGates = 2;
-        }
-        can: Node {
-            x = 500;
-            y = 150;
-            range = 200;
-            numGates = 2;
-            @display("p=500,150;i=block/bucket");
-        }
-        anotherCan: Node {
-            x = 573.885;
-            y = 754.65;
-            range = 200;
-            numGates = 2;
-            @display("p=573.885,754.65;i=block/bucket");
-        }
-        cloud: Node {
-            x = 1900;
-            y = 650;
-            range = 400;
-            numGates = 2;
-            @display("p=1900,650;i=device/server");
-            
-        }
-    connections:
-        host.gate[0] <--> can.gate[0];
-        host.gate[1] <--> anotherCan.gate[0];
-        can.gate[1] <--> cloud.gate[0];
-        anotherCan.gate[1] <--> cloud.gate[1];
-}
-
-network NoGarbageInTheCans
-{
-    @display("bgb=3000, 1250");
-
-    @figure[outerroad](type=polyline; points=1700,200,150,200,150,1100,1700,1100; lineColor=black; lineWidth=4);
-	@figure[innerroad](type=polyline; points=1700,450,400,450,400,850,1700,850; lineColor=black; lineWidth=4);
-	
-    submodules:
-        host: MobileNode {
-            x = 1750;
-            y = 300;
-            range = 300;
-            numGates = 2;
-        }
-        can: Node {
-            x = 500;
-            y = 150;
-            range = 200;
-            numGates = 1;
-            @display("p=500,150;i=block/bucket");
-        }
-        anotherCan: Node {
-            x = 573.885;
-            y = 754.65;
-            range = 200;
-            numGates = 1;
-            @display("p=573.885,754.65;i=block/bucket");
-        }
-        cloud: Node {
-            x = 1900;
-            y = 650;
-            range = 400;
-            numGates = 0;
-            @display("p=1900,650;i=device/server");
-            
-        }
-
-    connections:
-        host.gate[0] <--> can.gate[0];
-        host.gate[1] <--> anotherCan.gate[0];
-}
