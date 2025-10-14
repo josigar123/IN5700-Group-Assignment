@@ -67,9 +67,6 @@ network GarbageCollectionSystem
     @figure[outerroad](type=polyline; points=1700,200,150,200,150,1100,1700,1100; lineColor=black; lineWidth=4);
     @figure[innerroad](type=polyline; points=1700,450,400,450,400,850,1700,850; lineColor=black; lineWidth=4);
 	
-	@figure[textInfo](type=text; pos=2700,200; text="System Information"; anchor=c);
-    @figure[textStats](type=text; pos=2700,250; text="Status: Running\n\nHELLO!"; font="Arial", 100; anchor=c);
-	
     submodules:
         visualizer: IntegratedCanvasVisualizer{
         	@display("p=1500,50");
@@ -77,7 +74,7 @@ network GarbageCollectionSystem
         host: MobileNode {
             x = 1750;
             y = 300;
-            range = 300;
+            range = 100;
         }
         can: Node  {
             x = 500;
