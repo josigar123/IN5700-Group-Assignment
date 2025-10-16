@@ -29,36 +29,37 @@ simple Node
         @class(Node);
 
     gates:
-        inout gate[numGates];
-       
+        inout gate[numGates];  
 }
 
-module MobileNode {
-    
+simple CanNode extends Node {
     parameters:
-        double x;
-        double y;
-        double range = default(300);
-        int numGates = default(3);
+        @class(CanNode);
+        @display("i=block/bucket");
+}
+
+simple AnotherCanNode extends Node {
+    parameters:
+        @class(AnotherCanNode);
+        @display("i=block/bucket");
+}
+
+simple CloudNode extends Node {
+    parameters:
+        @class(CloudNode);
+        @display("i=device/server");
+}
+
+module HostNode extends Node
+{
+    parameters:
+        @class(HostNode);
         @display("i=block/wheelbarrow");
-        
-    gates:
-        inout gate[numGates];
-        
+
     submodules:
         mobility: TurtleMobility;
-        node: Node {
-            x = parent.x;
-            y = parent.y;
-            range = parent.range;
-            numGates = parent.numGates;
-        }
-        
-    connections:
-        for i=0..numGates-1 {
-            gate[i] <--> node.gate[i];
-        }
 }
+
 
 network GarbageCollectionSystem
 {
@@ -71,26 +72,26 @@ network GarbageCollectionSystem
         visualizer: IntegratedCanvasVisualizer{
         	@display("p=1500,50");
         }
-        host: MobileNode {
+        host: HostNode {
             x = 1750;
             y = 300;
             range = 100;
         }
-        can: Node  {
+        can: CanNode  {
             x = 500;
             y = 150;
             range = 320;
             numGates = 2;
             @display("i=block/bucket");
         }
-        anotherCan: Node {
+        anotherCan: AnotherCanNode {
             x = 573.885;
             y = 754.65;
         	range = 320;
         	numGates = 2;
         	@display("i=block/bucket");
         }
-        cloud: Node {
+        cloud: CloudNode {
         	x = 1900;
         	y = 650;
         	range = 1600;
