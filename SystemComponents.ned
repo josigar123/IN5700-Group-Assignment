@@ -60,7 +60,6 @@ module HostNode extends Node
         mobility: TurtleMobility;
 }
 
-
 network GarbageCollectionSystem
 {
     @display("bgb=3000,1250");

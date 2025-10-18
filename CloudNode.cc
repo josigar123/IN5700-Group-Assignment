@@ -21,6 +21,16 @@ void CloudNode::initialize(){
 }
 
 void CloudNode::handleMessage(cMessage *msg){
+    if(strcmp(msg->getName(), "7-Collect garbage") == 0){
+        cMessage *resp = new cMessage("8-Ok");
+        send(resp, "gate$o", 0);
+    }
+
+    if(strcmp(msg->getName(), "9-Collect garbage") == 0){
+        cMessage *resp = new cMessage("10-Ok");
+        send(resp, "gate$o", 0);
+    }
+
     delete msg;
 }
 
