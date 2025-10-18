@@ -30,7 +30,14 @@ void CanNode::handleMessage(cMessage *msg){
             cMessage *cloudMsg = new cMessage("7-Collect garbage");
             send(cloudMsg, "gate$o", 1);
         }
-        cMessage *resp = new cMessage("3-Yes");
+
+        cMessage *resp;
+        if(strcmp(configName, "NoGarbageInTheCans") == 0){
+            resp = new cMessage("2-No");
+
+        }else{
+            resp = new cMessage("3-Yes");
+        }
         send(resp, "gate$o", 0);
     }
     else{
