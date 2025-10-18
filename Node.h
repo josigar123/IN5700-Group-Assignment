@@ -19,6 +19,10 @@ using namespace inet;
 
 class Node : public cSimpleModule
 {
+public:
+    static simsignal_t garbageCollectedSignalFromCan;
+    static simsignal_t garbageCollectedSignalFromAnotherCan;
+
 protected:
     cModule *network = nullptr;
     cOvalFigure *oval = nullptr;
@@ -34,7 +38,5 @@ protected:
     virtual void renderText();
     void renderCoverageCircle(double x, double y);
 };
-
-Define_Module(Node);
 
 #endif /* NODE_H_ */

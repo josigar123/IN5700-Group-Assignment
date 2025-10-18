@@ -45,9 +45,13 @@ simple AnotherCanNode extends Node {
 }
 
 simple CloudNode extends Node {
+
+    
     parameters:
         @class(CloudNode);
         @display("i=device/server");
+        @signal[garbageCollectedFromCan](type=bool);
+        @signal[garbageCollectedFromAnotherCan](type=bool);
 }
 
 module HostNode extends Node
@@ -67,6 +71,7 @@ network GarbageCollectionSystem
     @figure[outerroad](type=polyline; points=1700,200,150,200,150,1100,1700,1100; lineColor=black; lineWidth=4);
     @figure[innerroad](type=polyline; points=1700,450,400,450,400,850,1700,850; lineColor=black; lineWidth=4);
 	
+	        
     submodules:
         visualizer: IntegratedCanvasVisualizer{
         	@display("p=1500,50");

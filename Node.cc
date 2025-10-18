@@ -15,6 +15,11 @@
 using namespace omnetpp;
 using namespace inet;
 
+simsignal_t Node::garbageCollectedSignalFromCan;
+simsignal_t Node::garbageCollectedSignalFromAnotherCan;
+
+Define_Module(Node);
+
 void Node::initialize()
 {
     EV << "INITIALIZING NODE: " << getFullPath() << "\n";
@@ -40,6 +45,9 @@ void Node::initialize()
 
     // Create coverage circle
     renderCoverageCircle(x, y);
+
+    garbageCollectedSignalFromCan = cComponent::registerSignal("garbageCollectedFromCan");
+    garbageCollectedSignalFromAnotherCan = cComponent::registerSignal("garbageCollectedFromAnotherCan");
 
     EV << "Node " << getName() << " at (" << x << "," << y << ") with range " << range << "\n";
 }

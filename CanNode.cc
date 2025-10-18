@@ -26,6 +26,10 @@ void CanNode::initialize(){
 
 void CanNode::handleMessage(cMessage *msg){
     if(strcmp(msg->getName(), "1-Is the can full?") == 0 && dropCount == dropLimit){
+        if(strcmp(configName, "GarbageInTheCansAndFast") == 0){
+            cMessage *cloudMsg = new cMessage("7-Collect garbage");
+            send(cloudMsg, "gate$o", 1);
+        }
         cMessage *resp = new cMessage("3-Yes");
         send(resp, "gate$o", 0);
     }
