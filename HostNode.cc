@@ -298,7 +298,7 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
 
             case FSM_Enter(SLOW_EXIT):
             {
-                endSimulation();
+                EV << "Final slow state reached";
             }
         }
 
@@ -341,7 +341,7 @@ void HostNode::handleFastFsmTransitions(cMessage *msg){
     FSM_Switch(*currentFsm){
         case FSM_Enter(FAST_EXIT):
         {
-            endSimulation();
+            EV << "Final Fast state reached";
         }
     }
 
@@ -391,7 +391,7 @@ void HostNode::handleEmptyFsmTransitions(cMessage *msg){
 
         case FSM_Enter(EMPTY_EXIT):
         {
-            endSimulation();
+            EV << "Final Empty state reached";
         }
     }
 }

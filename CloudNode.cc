@@ -25,8 +25,8 @@ void CloudNode::handleMessage(cMessage *msg){
         cMessage *resp = new cMessage("8-Ok");
 
         if(strcmp(configName, "GarbageInTheCansAndFast") == 0){
-            emit(garbageCollectedSignalFromCan, true);
             send(resp, "gate$o", 1);
+            emit(garbageCollectedSignalFromCan, true);
         }
         else
             send(resp, "gate$o", 0);
@@ -36,8 +36,8 @@ void CloudNode::handleMessage(cMessage *msg){
         cMessage *resp = new cMessage("10-Ok");
 
         if(strcmp(configName, "GarbageInTheCansAndFast") == 0){
-            emit(garbageCollectedSignalFromAnotherCan, true);
             send(resp, "gate$o", 2);
+            emit(garbageCollectedSignalFromAnotherCan, true);
         }
         else
             send(resp, "gate$o", 0);
