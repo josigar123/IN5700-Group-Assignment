@@ -32,7 +32,7 @@ void AnotherCanNode::initialize(){
     Node::initialize();
 
     // ### SETUP STATUS TEXT ###
-    statusText = new cTextFigure("hostStatus");
+    statusText = new cTextFigure("anotherCanStatus");
     statusText->setColor(cFigure::BLUE);
     statusText->setFont(cFigure::Font("Arial", 36));
     updateStatusText();
@@ -52,7 +52,7 @@ void AnotherCanNode::handleMessage(cMessage *msg){
     if(strcmp(msg->getName(), "4-Is the can full?") == 0){
 
         if(dropCount < dropLimit){
-            bubble("Package lost");
+            bubble("Lost message");
             dropCount++;
             numberOfLostAnotherCanMsgs++;
             updateStatusText();

@@ -32,7 +32,7 @@ void CanNode::initialize(){
     Node::initialize();
 
     // ### SETUP STATUS TEXT ###
-    statusText = new cTextFigure("hostStatus");
+    statusText = new cTextFigure("canStatus");
     statusText->setColor(cFigure::BLUE);
     statusText->setFont(cFigure::Font("Arial", 36));
     updateStatusText();
@@ -53,7 +53,7 @@ void CanNode::handleMessage(cMessage *msg){
 
         // Check if we should drop or process message
         if(dropCount < dropLimit){
-            bubble("Package lost");
+            bubble("Lost message");
             dropCount++;
             numberOfLostCanMsgs++;
             updateStatusText();
