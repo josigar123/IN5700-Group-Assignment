@@ -234,7 +234,7 @@ void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, cObject *
                 oval->setLineColor(cFigure::GREEN);
                 EV << "Entered range of anotherCan. Scheduling first message.\n";
 
-                if (!sendCanTimer->isScheduled())
+                if (!sendAnotherCanTimer->isScheduled())
                     scheduleAt(simTime() + 1, sendAnotherCanTimer); // first send in 1s
             }
             else if (!nowInRangeAnotherCan && inRangeOfAnotherCan) {

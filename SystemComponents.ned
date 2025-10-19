@@ -79,7 +79,7 @@ network GarbageCollectionSystem
         host: HostNode {
             x = 1750;
             y = 300;
-            range = 100;
+            range = 250;
         }
         can: CanNode  {
             x = 500;
