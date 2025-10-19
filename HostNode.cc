@@ -74,6 +74,7 @@ protected:
     void handleEmptyMessageTransmissions(cMessage *msg);
 
     void handleSendTimer(cMessage *msg, bool &inRage, bool &acked, const char *targetName, int gateIndex, int sendState, int altSendState);
+    void updateRangeState(bool nowInRange, bool &prevInRange, cMessage *timer, const char *name);
 
     void updateStatusText();
 };
@@ -202,38 +203,8 @@ void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, cObject *
             bool nowInRangeCan = isInRangeOf(canNode);
             bool nowInRangeAnotherCan = isInRangeOf(anotherCanNode);
 
-            if (nowInRangeCan && !inRangeOfCan) {
-                // Just entered range
-                inRangeOfCan = true;
-                oval->setLineColor(cFigure::GREEN);
-                EV << "Entered range of Can. Scheduling first message.\n";
-
-                if (!sendCanTimer->isScheduled())
-                    scheduleAt(simTime() + 1, sendCanTimer); // first send in 1s
-            }
-            else if (!nowInRangeCan && inRangeOfCan) {
-                // Just left range
-                inRangeOfCan = false;
-                EV << "Left range of Can. Canceling timer.\n";
-                cancelEvent(sendCanTimer);
-            }
-
-            if (nowInRangeAnotherCan && !inRangeOfAnotherCan) {
-                // Just entered range
-                inRangeOfAnotherCan = true;
-                oval->setLineColor(cFigure::GREEN);
-                EV << "Entered range of anotherCan. Scheduling first message.\n";
-
-                if (!sendAnotherCanTimer->isScheduled())
-                    scheduleAt(simTime() + 1, sendAnotherCanTimer); // first send in 1s
-            }
-            else if (!nowInRangeAnotherCan && inRangeOfAnotherCan) {
-                // Just left range
-                inRangeOfAnotherCan = false;
-                EV << "Left range of AnotherCan. Canceling timer.\n";
-                cancelEvent(sendAnotherCanTimer);
-            }
-
+            updateRangeState(nowInRangeCan, inRangeOfCan, sendCanTimer, "Can");
+            updateRangeState(nowInRangeAnotherCan, inRangeOfAnotherCan, sendAnotherCanTimer, "AnotherCan");
         }
 }
 
@@ -355,10 +326,7 @@ void HostNode::handleEmptyFsmTransitions(cMessage *msg){
             break;
         }
         case FSM_Enter(EMPTY_SEND_TO_ANOTHER_CAN):
-        {
            break;
-        }
-
         case FSM_Enter(EMPTY_EXIT):
         {
             EV << "Final Empty state reached";
@@ -407,5 +375,20 @@ void HostNode::updateStatusText() {
             sendHostFast, rcvdHostFast, sendHostSlow, rcvdHostSlow);
     if (statusText) {
         statusText->setText(buf);
+    }
+}
+
+void HostNode::updateRangeState(bool nowInRange, bool &prevInRange, cMessage *timer, const char *name){
+    if (nowInRange && !prevInRange) {
+        prevInRange = true;
+        oval->setLineColor(cFigure::GREEN);
+        EV << "Entered range of " << name << ". Scheduling first message.\n";
+        if (!timer->isScheduled())
+            scheduleAt(simTime() + 1, timer);
+    }
+    else if (!nowInRange && prevInRange) {
+        prevInRange = false;
+        EV << "Left range of " << name << ". Canceling timer.\n";
+        cancelEvent(timer);
     }
 }
