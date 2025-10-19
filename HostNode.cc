@@ -128,13 +128,27 @@ void HostNode::handleMessage(cMessage *msg){
 
     if (msg == sendCanTimer) {
             if (inRangeOfCan && !canAcked) {
-                EV << "Sending periodic message to Can.\n";
-                cMessage *req = new cMessage("1-Is the can full?");
-                send(req, "gate$o", 0);
 
-                sendHostFast++;
+                bool shouldSend = false;
+
+                if(strcmp(configName, "GarbageInTheCansAndFast") == 0) {
+                    shouldSend = (currentFsm->getState() == FAST_SEND_TO_CAN);
+                }
+                else if(strcmp(configName, "GarbageInTheCansAndSlow") == 0) {
+                    shouldSend = (currentFsm->getState() == SLOW_SEND_TO_CAN);
+                }
+                else if(strcmp(configName, "NoGarbageInTheCans") == 0) {
+                    shouldSend = (currentFsm->getState() == EMPTY_SEND_TO_CAN);
+                }
+
+                if(shouldSend) {
+                    EV << "Sending periodic message to Can.\n";
+                    cMessage *req = new cMessage("1-Is the can full?");
+                    send(req, "gate$o", 0);
+
+                    sendHostFast++;
+                }
                 updateStatusText();
-
                 scheduleAt(simTime() + 1, sendCanTimer);
             }
             return;
@@ -142,23 +156,37 @@ void HostNode::handleMessage(cMessage *msg){
 
     if (msg == sendAnotherCanTimer) {
             if (inRangeOfAnotherCan && !anotherCanAcked) {
-                EV << "Sending periodic message to AnotherCan.\n";
-                cMessage *req = new cMessage("4-Is the can full?");
-                send(req, "gate$o", 1);
 
-                sendHostFast++;
+                bool shouldSend = false;
+
+                if(strcmp(configName, "GarbageInTheCansAndFast") == 0) {
+                         shouldSend = (currentFsm->getState() == FAST_SEND_TO_ANOTHER_CAN);
+                     }
+                     else if(strcmp(configName, "GarbageInTheCansAndSlow") == 0) {
+                         shouldSend = (currentFsm->getState() == SLOW_SEND_TO_ANOTHER_CAN);
+                     }
+                     else if(strcmp(configName, "NoGarbageInTheCans") == 0) {
+                         shouldSend = (currentFsm->getState() == EMPTY_SEND_TO_ANOTHER_CAN);
+                     }
+
+                if(shouldSend) {
+                    EV << "Sending periodic message to AnotherCan.\n";
+                    cMessage *req = new cMessage("4-Is the can full?");
+                    send(req, "gate$o", 1);
+
+                    sendHostFast++;
+                }
                 updateStatusText();
-
                 scheduleAt(simTime() + 1, sendAnotherCanTimer);
             }
             return;
         }
 
-        if(strcmp(configName, "GarbageInTheCansAndSlow") == 0) {handleSlowMessageTransmissions(msg); handleSlowFsmTransitions(msg);}
+    if(strcmp(configName, "GarbageInTheCansAndSlow") == 0) {handleSlowMessageTransmissions(msg); handleSlowFsmTransitions(msg);}
 
-        if(strcmp(configName, "GarbageInTheCansAndFast") == 0) {handleFastMessageTransmissions(msg); handleFastFsmTransitions(msg);}
+    if(strcmp(configName, "GarbageInTheCansAndFast") == 0) {handleFastMessageTransmissions(msg); handleFastFsmTransitions(msg);}
 
-        if(strcmp(configName, "NoGarbageInTheCans") == 0) {handleEmptyMessageTransmissions(msg); handleEmptyFsmTransitions(msg);}
+    if(strcmp(configName, "NoGarbageInTheCans") == 0) {handleEmptyMessageTransmissions(msg); handleEmptyFsmTransitions(msg);}
 }
 
 void HostNode::subscribeToMobilityStateChangedSignal(){
@@ -262,11 +290,6 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
     FSM_Switch(*currentFsm){
             case FSM_Enter(SLOW_SEND_TO_CAN):
             {
-                // Send msg again if no ack
-                if(strcmp(msg->getName(), "3-Yes") != 0 && inRangeOfCan){
-                    cMessage *req = new cMessage("1-Is the can full?");
-                    send(req, "gate$o", 0);
-                }
                 break;
             }
 
@@ -281,10 +304,6 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
 
             case FSM_Enter(SLOW_SEND_TO_ANOTHER_CAN):
             {
-                if(strcmp(msg->getName(), "6-Yes") != 0 && inRangeOfAnotherCan){
-                    cMessage *req = new cMessage("4-Is the can full?");
-                    send(req, "gate$o", 1);
-                }
                 break;
             }
             case FSM_Enter(SLOW_SEND_TO_ANOTHER_CAN_CLOUD):
@@ -371,21 +390,10 @@ void HostNode::handleEmptyFsmTransitions(cMessage *msg){
     FSM_Switch(*currentFsm){
         case FSM_Enter(EMPTY_SEND_TO_CAN):
         {
-            if(strcmp(msg->getName(), "2-No") != 0 && inRangeOfCan){
-                cMessage *req = new cMessage("1-Is the can full?");
-                send(req, "gate$o", 0);
-
-            }
             break;
         }
         case FSM_Enter(EMPTY_SEND_TO_ANOTHER_CAN):
         {
-            // Send msg again if no ack
-           if(strcmp(msg->getName(), "5-No") != 0 && inRangeOfAnotherCan){
-               cMessage *req = new cMessage("4-Is the can full?");
-               send(req, "gate$o", 1);
-
-           }
            break;
         }
 
@@ -403,6 +411,7 @@ void HostNode::handleEmptyMessageTransmissions(cMessage *msg){
         updateStatusText();
         canAcked = true;
         cancelEvent(sendCanTimer);
+        FSM_Goto(*currentFsm, EMPTY_SEND_TO_ANOTHER_CAN);
     }
 
     if(strcmp(msg->getName(), "5-No") == 0){
