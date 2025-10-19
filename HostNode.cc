@@ -32,6 +32,9 @@ protected:
 
     cTextFigure *statusText = nullptr;
 
+    enum FsmType { FAST, SLOW, EMPTY };
+    FsmType fsmType;
+
     cFSM *currentFsm; // For storing the appropriate FSM
     cFSM fastFsm;
     enum{
@@ -70,6 +73,8 @@ protected:
     void handleFastMessageTransmissions(cMessage *msg);
     void handleEmptyMessageTransmissions(cMessage *msg);
 
+    void handleSendTimer(cMessage *msg, bool &inRage, bool &acked, const char *targetName, int gateIndex, int sendState, int altSendState);
+
     void updateStatusText();
 };
 
@@ -93,18 +98,21 @@ void HostNode::initialize(){
 
     // ### SETUP APPROPRIATE FSM CONFIG ###
     if(strcmp(configName, "GarbageInTheCansAndSlow") == 0){
+        fsmType = SLOW;
         currentFsm = &slowFsm;
         currentFsm->setName("slow");
         FSM_Goto(*currentFsm, SLOW_SEND_TO_CAN);
     }
 
     if(strcmp(configName, "GarbageInTheCansAndFast") == 0){
+        fsmType = FAST;
         currentFsm = &fastFsm;
         currentFsm->setName("fast");
         FSM_Goto(*currentFsm, FAST_SEND_TO_CAN);
     }
 
     if(strcmp(configName, "NoGarbageInTheCans") == 0){
+        fsmType = EMPTY;
         currentFsm = &emptyFsm;
         currentFsm->setName("empty");
         FSM_Goto(*currentFsm, EMPTY_SEND_TO_CAN);
@@ -127,66 +135,20 @@ void HostNode::initialize(){
 void HostNode::handleMessage(cMessage *msg){
 
     if (msg == sendCanTimer) {
-            if (inRangeOfCan && !canAcked) {
-
-                bool shouldSend = false;
-
-                if(strcmp(configName, "GarbageInTheCansAndFast") == 0) {
-                    shouldSend = (currentFsm->getState() == FAST_SEND_TO_CAN);
-                }
-                else if(strcmp(configName, "GarbageInTheCansAndSlow") == 0) {
-                    shouldSend = (currentFsm->getState() == SLOW_SEND_TO_CAN);
-                }
-                else if(strcmp(configName, "NoGarbageInTheCans") == 0) {
-                    shouldSend = (currentFsm->getState() == EMPTY_SEND_TO_CAN);
-                }
-
-                if(shouldSend) {
-                    EV << "Sending periodic message to Can.\n";
-                    cMessage *req = new cMessage("1-Is the can full?");
-                    send(req, "gate$o", 0);
-
-                    sendHostFast++;
-                }
-                updateStatusText();
-                scheduleAt(simTime() + 1, sendCanTimer);
-            }
-            return;
-        }
+        handleSendTimer(msg, inRangeOfCan, canAcked, "Can", 0, FAST_SEND_TO_CAN, SLOW_SEND_TO_CAN);
+        return;
+    }
 
     if (msg == sendAnotherCanTimer) {
-            if (inRangeOfAnotherCan && !anotherCanAcked) {
+        handleSendTimer(msg, inRangeOfAnotherCan, anotherCanAcked, "AnotherCan", 1, FAST_SEND_TO_ANOTHER_CAN, SLOW_SEND_TO_ANOTHER_CAN);
+        return;
+    }
 
-                bool shouldSend = false;
-
-                if(strcmp(configName, "GarbageInTheCansAndFast") == 0) {
-                         shouldSend = (currentFsm->getState() == FAST_SEND_TO_ANOTHER_CAN);
-                     }
-                     else if(strcmp(configName, "GarbageInTheCansAndSlow") == 0) {
-                         shouldSend = (currentFsm->getState() == SLOW_SEND_TO_ANOTHER_CAN);
-                     }
-                     else if(strcmp(configName, "NoGarbageInTheCans") == 0) {
-                         shouldSend = (currentFsm->getState() == EMPTY_SEND_TO_ANOTHER_CAN);
-                     }
-
-                if(shouldSend) {
-                    EV << "Sending periodic message to AnotherCan.\n";
-                    cMessage *req = new cMessage("4-Is the can full?");
-                    send(req, "gate$o", 1);
-
-                    sendHostFast++;
-                }
-                updateStatusText();
-                scheduleAt(simTime() + 1, sendAnotherCanTimer);
-            }
-            return;
-        }
-
-    if(strcmp(configName, "GarbageInTheCansAndSlow") == 0) {handleSlowMessageTransmissions(msg); handleSlowFsmTransitions(msg);}
-
-    if(strcmp(configName, "GarbageInTheCansAndFast") == 0) {handleFastMessageTransmissions(msg); handleFastFsmTransitions(msg);}
-
-    if(strcmp(configName, "NoGarbageInTheCans") == 0) {handleEmptyMessageTransmissions(msg); handleEmptyFsmTransitions(msg);}
+    switch(fsmType){
+        case FAST: handleFastMessageTransmissions(msg); handleFastFsmTransitions(msg); break;
+        case SLOW: handleSlowMessageTransmissions(msg); handleSlowFsmTransitions(msg); break;
+        case EMPTY: handleEmptyMessageTransmissions(msg); handleEmptyFsmTransitions(msg); break;
+    }
 }
 
 void HostNode::subscribeToMobilityStateChangedSignal(){
@@ -295,11 +257,11 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
 
             case FSM_Enter(SLOW_SEND_TO_CAN_CLOUD):
             {
-                    cMessage *req = new cMessage("7-Collect garbage");
-                    send(req, "gate$o", 2);
-                    sendHostSlow++;
-                    updateStatusText();
-                    break;
+                cMessage *req = new cMessage("7-Collect garbage");
+                send(req, "gate$o", 2);
+                sendHostSlow++;
+                updateStatusText();
+                break;
             }
 
             case FSM_Enter(SLOW_SEND_TO_ANOTHER_CAN):
@@ -421,6 +383,21 @@ void HostNode::handleEmptyMessageTransmissions(cMessage *msg){
         anotherCanAcked = true;
         cancelEvent(sendAnotherCanTimer);
         FSM_Goto(*currentFsm, EMPTY_EXIT);
+    }
+}
+
+void HostNode::handleSendTimer(cMessage *msg, bool &inRange, bool &acked, const char *targetName, int gateIndex, int sendState, int altSendState){
+    if (inRange && !acked) {
+        bool shouldSend = (currentFsm->getState() == sendState || currentFsm->getState() == altSendState);
+
+        if (shouldSend) {
+            EV << "Sending periodic message to " << targetName << ".\n";
+            cMessage *req = new cMessage((gateIndex == 0) ? "1-Is the can full?" : "4-Is the can full?");
+            send(req, "gate$o", gateIndex);
+            sendHostFast++;
+        }
+        updateStatusText();
+        scheduleAt(simTime() + 1, msg);
     }
 }
 
