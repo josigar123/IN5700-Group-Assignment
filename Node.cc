@@ -25,8 +25,8 @@ void Node::initialize()
     EV << "INITIALIZING NODE: " << getFullPath() << "\n";
 
     // Extract module params
-    double x = par("x");
-    double y = par("y");
+    x = par("x");
+    y = par("y");
 
     // Set class fields
     range = par("range");

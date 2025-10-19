@@ -28,6 +28,9 @@ protected:
     cOvalFigure *oval = nullptr;
     cCanvas *canvas = nullptr;
     const char *configName = nullptr;
+
+    double x;
+    double y;
     double range = 0;
 
 protected:

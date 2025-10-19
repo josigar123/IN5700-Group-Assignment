@@ -118,7 +118,7 @@ void HostNode::initialize(){
 
     if (mobility) {
         auto pos = mobility->getCurrentPosition();
-        statusText->setPosition(cFigure::Point(pos.x - 500, pos.y - range - 50)); // Above the node
+        statusText->setPosition(cFigure::Point(pos.x - 500, pos.y - 100)); // Above the node
     }
 
     canvas->addFigure(statusText);
@@ -205,7 +205,7 @@ void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, cObject *
                 oval->setBounds(cFigure::Rectangle(pos.x - range, pos.y - range, range*2, range*2));
 
                 if (statusText) {
-                    statusText->setPosition(cFigure::Point(pos.x - 500, pos.y - range - 50));
+                    statusText->setPosition(cFigure::Point(pos.x - 500, pos.y - 100));
                 }
             }
 
