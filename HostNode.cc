@@ -22,7 +22,16 @@ protected:
     bool anotherCanAcked = false;
     cMessage *sendCanTimer = nullptr;
     cMessage *sendAnotherCanTimer = nullptr;
+
     MobilityBase *mobility;
+
+    int sendHostFast = 0;
+    int rcvdHostFast = 0;
+    int sendHostSlow = 0;
+    int rcvdHostSlow = 0;
+
+    cTextFigure *statusText = nullptr;
+
     cFSM *currentFsm; // For storing the appropriate FSM
     cFSM fastFsm;
     enum{
@@ -44,7 +53,6 @@ protected:
         EMPTY_SEND_TO_ANOTHER_CAN = FSM_Steady(2),
         EMPTY_EXIT = FSM_Steady(3),
     };
-    int stateIterator;
 
 protected:
     virtual void initialize() override;
@@ -61,6 +69,8 @@ protected:
     void handleSlowMessageTransmissions(cMessage *msg);
     void handleFastMessageTransmissions(cMessage *msg);
     void handleEmptyMessageTransmissions(cMessage *msg);
+
+    void updateStatusText();
 };
 
 Define_Module(HostNode);
@@ -81,10 +91,7 @@ void HostNode::initialize(){
     sendCanTimer = new cMessage("sendCanTimer");
     sendAnotherCanTimer = new cMessage("sendAnotherCanTimer");
 
-    stateIterator = 0;
-    WATCH(stateIterator);
-
-    // Point to the appropriate fsm based upon input
+    // ### SETUP APPROPRIATE FSM CONFIG ###
     if(strcmp(configName, "GarbageInTheCansAndSlow") == 0){
         currentFsm = &slowFsm;
         currentFsm->setName("slow");
@@ -102,6 +109,19 @@ void HostNode::initialize(){
         currentFsm->setName("empty");
         FSM_Goto(*currentFsm, EMPTY_SEND_TO_CAN);
     }
+
+    // ### SETUP STATUS TEXT ###
+    statusText = new cTextFigure("hostStatus");
+    statusText->setColor(cFigure::BLUE);
+    statusText->setFont(cFigure::Font("Arial", 36));
+    updateStatusText();
+
+    if (mobility) {
+        auto pos = mobility->getCurrentPosition();
+        statusText->setPosition(cFigure::Point(pos.x - 500, pos.y - range - 50)); // Above the node
+    }
+
+    canvas->addFigure(statusText);
 }
 
 void HostNode::handleMessage(cMessage *msg){
@@ -111,6 +131,9 @@ void HostNode::handleMessage(cMessage *msg){
                 EV << "Sending periodic message to Can.\n";
                 cMessage *req = new cMessage("1-Is the can full?");
                 send(req, "gate$o", 0);
+
+                sendHostFast++;
+                updateStatusText();
 
                 scheduleAt(simTime() + 1, sendCanTimer);
             }
@@ -122,6 +145,9 @@ void HostNode::handleMessage(cMessage *msg){
                 EV << "Sending periodic message to AnotherCan.\n";
                 cMessage *req = new cMessage("4-Is the can full?");
                 send(req, "gate$o", 1);
+
+                sendHostFast++;
+                updateStatusText();
 
                 scheduleAt(simTime() + 1, sendAnotherCanTimer);
             }
@@ -177,6 +203,10 @@ void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, cObject *
             if (mobility != nullptr) {
                 auto pos = mobility->getCurrentPosition();
                 oval->setBounds(cFigure::Rectangle(pos.x - range, pos.y - range, range*2, range*2));
+
+                if (statusText) {
+                    statusText->setPosition(cFigure::Point(pos.x - 500, pos.y - range - 50));
+                }
             }
 
             bool nowInRangeCan = isInRangeOf(canNode);
@@ -244,6 +274,8 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
             {
                     cMessage *req = new cMessage("7-Collect garbage");
                     send(req, "gate$o", 2);
+                    sendHostSlow++;
+                    updateStatusText();
                     break;
             }
 
@@ -259,6 +291,8 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
             {
                 cMessage *req = new cMessage("9-Collect garbage");
                 send(req, "gate$o", 2);
+                sendHostSlow++;
+                updateStatusText();
                 break;
             }
 
@@ -274,48 +308,37 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
 void HostNode::handleSlowMessageTransmissions(cMessage *msg){
     if(strcmp(msg->getName(), "3-Yes") == 0){
         // Received confirmation from Can
+        rcvdHostFast++;
+        updateStatusText();
         canAcked = true;
         cancelEvent(sendCanTimer);
         FSM_Goto(*currentFsm, SLOW_SEND_TO_CAN_CLOUD);
     }
 
     if(strcmp(msg->getName(), "8-Ok") == 0){
+        rcvdHostSlow++;
+        updateStatusText();
         FSM_Goto(*currentFsm, SLOW_SEND_TO_ANOTHER_CAN);
     }
 
     if(strcmp(msg->getName(), "6-Yes") == 0){
         // Received confirmation from AnotherCan
+        rcvdHostFast++;
+        updateStatusText();
         anotherCanAcked = true;
         cancelEvent(sendAnotherCanTimer);
         FSM_Goto(*currentFsm, SLOW_SEND_TO_ANOTHER_CAN_CLOUD);
     }
 
     if(strcmp(msg->getName(), "10-Ok") == 0){
+        rcvdHostSlow++;
+        updateStatusText();
         FSM_Goto(*currentFsm, SLOW_EXIT);
     }
 }
 
 void HostNode::handleFastFsmTransitions(cMessage *msg){
     FSM_Switch(*currentFsm){
-        case FSM_Enter(FAST_SEND_TO_CAN):
-        {
-            // Send msg again if no ack
-            if(strcmp(msg->getName(), "3-Yes") != 0 && inRangeOfCan){
-                cMessage *req = new cMessage("1-Is the can full?");
-                send(req, "gate$o", 0);
-            }
-            break;
-        }
-        case FSM_Enter(FAST_SEND_TO_ANOTHER_CAN):
-        {
-            // Send msg again if no ack
-           if(strcmp(msg->getName(), "6-Yes") != 0 && inRangeOfAnotherCan){
-               cMessage *req = new cMessage("4-Is the can full?");
-               send(req, "gate$o", 1);
-           }
-           break;
-        }
-
         case FSM_Enter(FAST_EXIT):
         {
             endSimulation();
@@ -329,12 +352,16 @@ void HostNode::handleFastFsmTransitions(cMessage *msg){
 void HostNode::handleFastMessageTransmissions(cMessage *msg){
     if(strcmp(msg->getName(), "3-Yes") == 0){
         // Received confirmation from Can
+        rcvdHostFast++;
+        updateStatusText();
         canAcked = true;
         cancelEvent(sendCanTimer);
     }
 
     if(strcmp(msg->getName(), "6-Yes") == 0){
         // Received confirmation from AnotherCan
+        rcvdHostFast++;
+        updateStatusText();
         anotherCanAcked = true;
         cancelEvent(sendAnotherCanTimer);
     }
@@ -347,6 +374,7 @@ void HostNode::handleEmptyFsmTransitions(cMessage *msg){
             if(strcmp(msg->getName(), "2-No") != 0 && inRangeOfCan){
                 cMessage *req = new cMessage("1-Is the can full?");
                 send(req, "gate$o", 0);
+
             }
             break;
         }
@@ -356,6 +384,7 @@ void HostNode::handleEmptyFsmTransitions(cMessage *msg){
            if(strcmp(msg->getName(), "5-No") != 0 && inRangeOfAnotherCan){
                cMessage *req = new cMessage("4-Is the can full?");
                send(req, "gate$o", 1);
+
            }
            break;
         }
@@ -370,14 +399,27 @@ void HostNode::handleEmptyFsmTransitions(cMessage *msg){
 void HostNode::handleEmptyMessageTransmissions(cMessage *msg){
     if(strcmp(msg->getName(), "2-No") == 0){
         // Received confirmation from Can
+        rcvdHostFast++;
+        updateStatusText();
         canAcked = true;
         cancelEvent(sendCanTimer);
     }
 
     if(strcmp(msg->getName(), "5-No") == 0){
         // Received confirmation from AnotherCan
+        rcvdHostFast++;
+        updateStatusText();
         anotherCanAcked = true;
         cancelEvent(sendAnotherCanTimer);
         FSM_Goto(*currentFsm, EMPTY_EXIT);
+    }
+}
+
+void HostNode::updateStatusText() {
+    char buf[200];
+    sprintf(buf, "sentHostFast: %d rcvdHostFast: %d sentHostSlow: %d rcvdHostSlow: %d",
+            sendHostFast, rcvdHostFast, sendHostSlow, rcvdHostSlow);
+    if (statusText) {
+        statusText->setText(buf);
     }
 }
