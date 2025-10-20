@@ -1,14 +1,19 @@
 <?xml version="1.0" ?>
 <movements>
     <movement id="1">
-        <!-- draw a square -->
         <set x="1750" y="300" z="0" speed="100" angle="0" borderPolicy="reflect"/>
         <turn angle="180"/>
-        <forward d="1460"/>
-        <turn angle="270"/>
-        <forward d="690"/>
-        <turn angle="270"/>
-        <forward d="1460"/>
+        <forward d="1460"/>    
     </movement>
-
+    
+    <movement id="2">
+    <turn angle="270"/>
+       <forward d="690"/>
+    </movement>
+    
+    <movement id="3">
+    	<turn angle="270"/>
+       <forward d="1460"/>
+    </movement>
+    
 </movements>

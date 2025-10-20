@@ -6,7 +6,7 @@
  */
 
 #define FSM_DEBUG
-#include "inet/mobility/base/MobilityBase.h"
+#include "TurtleMobility.h"
 #include "Node.h"
 
 class HostNode : public Node, public cListener{
@@ -23,7 +23,9 @@ protected:
     cMessage *sendCanTimer = nullptr;
     cMessage *sendAnotherCanTimer = nullptr;
 
-    MobilityBase *mobility;
+    cXMLElement *root = getEnvir()->getXMLDocument("turtle.xml");
+
+    Mine::TurtleMobility *mobility;
 
     int sendHostFast = 0;
     int rcvdHostFast = 0;
@@ -63,7 +65,6 @@ protected:
     virtual void receiveSignal(cComponent *source, simsignal_t signalID, bool value, cObject *details) override;
     virtual void receiveSignal(cComponent *source, simsignal_t signalID, cObject *obj, cObject *details) override;
 
-    virtual void subscribeToMobilityStateChangedSignal();
     virtual bool isInRangeOf(Node *target);
     void handleSlowFsmTransitions(cMessage *msg);
     void handleFastFsmTransitions(cMessage *msg);
@@ -84,7 +85,9 @@ Define_Module(HostNode);
 void HostNode::initialize(){
 
     Node::initialize();
-    subscribeToMobilityStateChangedSignal();
+
+    mobility = check_and_cast<Mine::TurtleMobility*>(getSubmodule("mobility"));
+    mobility->subscribe(inet::MobilityBase::mobilityStateChangedSignal, this);
 
     canNode = check_and_cast<Node*>(getParentModule()->getSubmodule("can"));
     anotherCanNode = check_and_cast<Node*>(getParentModule()->getSubmodule("anotherCan"));
@@ -149,16 +152,6 @@ void HostNode::handleMessage(cMessage *msg){
         case FAST: handleFastMessageTransmissions(msg); handleFastFsmTransitions(msg); break;
         case SLOW: handleSlowMessageTransmissions(msg); handleSlowFsmTransitions(msg); break;
         case EMPTY: handleEmptyMessageTransmissions(msg); handleEmptyFsmTransitions(msg); break;
-    }
-}
-
-void HostNode::subscribeToMobilityStateChangedSignal(){
-    cModule *mobMod = getSubmodule("mobility");
-    if (mobMod != nullptr) {
-        mobility = check_and_cast<inet::MobilityBase *>(mobMod);
-        mobility->subscribe(inet::MobilityBase::mobilityStateChangedSignal, this);
-    } else {
-        mobility = nullptr; // node is static
     }
 }
 
@@ -232,6 +225,11 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
                 send(req, "gate$o", 2);
                 sendHostSlow++;
                 updateStatusText();
+
+                cXMLElement *movementLeg = root->getElementById("2");
+
+                mobility->setLeg(movementLeg);
+
                 break;
             }
 
@@ -392,3 +390,4 @@ void HostNode::updateRangeState(bool nowInRange, bool &prevInRange, cMessage *ti
         cancelEvent(timer);
     }
 }
+

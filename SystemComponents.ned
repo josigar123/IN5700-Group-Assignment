@@ -14,8 +14,11 @@
 //
 
 import inet.mobility.contract.IMobility;
-import inet.mobility.single.TurtleMobility;
 import inet.visualizer.canvas.integrated.IntegratedCanvasVisualizer;
+
+simple TurtleMobility extends inet.mobility.single.TurtleMobility{
+	@class(Mine::TurtleMobility);
+}
 
 simple Node
 {
@@ -46,7 +49,6 @@ simple AnotherCanNode extends Node {
 
 simple CloudNode extends Node {
 
-    
     parameters:
         @class(CloudNode);
         @display("i=device/server");
@@ -61,7 +63,9 @@ module HostNode extends Node
         @display("i=block/wheelbarrow");
 
     submodules:
-        mobility: TurtleMobility;
+        mobility: TurtleMobility{
+        	turtleScript = xmldoc("turtle.xml", "movements//movement[@id='1']");
+        }
 }
 
 network GarbageCollectionSystem
@@ -79,7 +83,7 @@ network GarbageCollectionSystem
         host: HostNode {
             x = 1750;
             y = 300;
-            range = 250;
+            range = 100;
         }
         can: CanNode  {
             x = 500;
