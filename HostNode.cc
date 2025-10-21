@@ -211,8 +211,6 @@ void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, cObject *
 
             atWaypointCan = mobility->getCurrentPosition().distance(waypointCan) <= 1 ? true : false;
             atWaypointAnotherCan = mobility->getCurrentPosition().distance(waypointAnotherCan) <= 1 ? true : false;
-            EV << "WP1: " << atWaypointCan;
-            EV << "WP2: " << atWaypointAnotherCan;
 
             updateRangeState(nowInRangeCan, inRangeOfCan, sendCanTimer, "Can");
             updateRangeState(nowInRangeAnotherCan, inRangeOfAnotherCan, sendAnotherCanTimer, "AnotherCan");
@@ -310,8 +308,19 @@ void HostNode::handleSlowMessageTransmissions(cMessage *msg){
 
 void HostNode::handleFastFsmTransitions(cMessage *msg){
     FSM_Switch(*currentFsm){
+        case FSM_Enter(FAST_SEND_TO_ANOTHER_CAN): {
+            EV << "FAST SEND TO CAN CLOUD ENTERED, ADDING NEXT LEG";
+            cXMLElement *movementLeg = root->getElementById("2");
+            mobility->setLeg(movementLeg);
+            break;
+
+        }
         case FSM_Enter(FAST_EXIT):
         {
+            EV << "FAST SEND TO ANOTHERCAN CLOUD ENTERED, ADDING NEXT LEG";
+            cXMLElement *movementLeg = root->getElementById("3");
+            mobility->setLeg(movementLeg);
+            break;
             EV << "Final Fast state reached";
         }
     }
