@@ -12,26 +12,36 @@
 class HostNode : public Node, public cListener{
 
 protected:
+    // Pointers to the nodes system
     Node* canNode;
     Node* anotherCanNode;
     Node* cloudNode;
 
+    // Variables for start-stop logic
+    Coord waypointCan = Coord(290, 300);
+    Coord waypointAnotherCan = Coord(290, 990);
+    bool atWaypointCan = false;
+    bool atWaypointAnotherCan = false;
+
+    // Range checks and acks for recvd messages
     bool inRangeOfCan = false;
     bool canAcked = false;
     bool inRangeOfAnotherCan = false;
     bool anotherCanAcked = false;
+    // Resend timers
     cMessage *sendCanTimer = nullptr;
     cMessage *sendAnotherCanTimer = nullptr;
 
-    cXMLElement *root = getEnvir()->getXMLDocument("turtle.xml");
-
+    // Turtle wrapper for mobility control
     Mine::TurtleMobility *mobility;
+    cXMLElement *root = getEnvir()->getXMLDocument("turtle.xml"); // Contains the legs for the turtle to complete
 
+    // Stat counters
     int sendHostFast = 0;
     int rcvdHostFast = 0;
     int sendHostSlow = 0;
     int rcvdHostSlow = 0;
-
+    // Text containing stats
     cTextFigure *statusText = nullptr;
 
     enum FsmType { FAST, SLOW, EMPTY };
@@ -74,7 +84,7 @@ protected:
     void handleFastMessageTransmissions(cMessage *msg);
     void handleEmptyMessageTransmissions(cMessage *msg);
 
-    void handleSendTimer(cMessage *msg, bool &inRage, bool &acked, const char *targetName, int gateIndex, int sendState, int altSendState);
+    void handleSendTimer(cMessage *msg, bool &inRage, bool &acked, bool &atWp, const char *targetName, int gateIndex, int sendState, int altSendState);
     void updateRangeState(bool nowInRange, bool &prevInRange, cMessage *timer, const char *name);
 
     void updateStatusText();
@@ -139,12 +149,13 @@ void HostNode::initialize(){
 void HostNode::handleMessage(cMessage *msg){
 
     if (msg == sendCanTimer) {
-        handleSendTimer(msg, inRangeOfCan, canAcked, "Can", 0, FAST_SEND_TO_CAN, SLOW_SEND_TO_CAN);
+        EV << "AT WAYPOINT1 HANDLING SEND TIMER";
+        handleSendTimer(msg, inRangeOfCan, canAcked, atWaypointCan, "Can", 0, FAST_SEND_TO_CAN, SLOW_SEND_TO_CAN);
         return;
     }
 
     if (msg == sendAnotherCanTimer) {
-        handleSendTimer(msg, inRangeOfAnotherCan, anotherCanAcked, "AnotherCan", 1, FAST_SEND_TO_ANOTHER_CAN, SLOW_SEND_TO_ANOTHER_CAN);
+        handleSendTimer(msg, inRangeOfAnotherCan, anotherCanAcked, atWaypointAnotherCan, "AnotherCan", 1, FAST_SEND_TO_ANOTHER_CAN, SLOW_SEND_TO_ANOTHER_CAN);
         return;
     }
 
@@ -153,6 +164,8 @@ void HostNode::handleMessage(cMessage *msg){
         case SLOW: handleSlowMessageTransmissions(msg); handleSlowFsmTransitions(msg); break;
         case EMPTY: handleEmptyMessageTransmissions(msg); handleEmptyFsmTransitions(msg); break;
     }
+
+    delete msg;
 }
 
 bool HostNode::isInRangeOf(Node* target) {
@@ -196,6 +209,11 @@ void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, cObject *
             bool nowInRangeCan = isInRangeOf(canNode);
             bool nowInRangeAnotherCan = isInRangeOf(anotherCanNode);
 
+            atWaypointCan = mobility->getCurrentPosition().distance(waypointCan) <= 1 ? true : false;
+            atWaypointAnotherCan = mobility->getCurrentPosition().distance(waypointAnotherCan) <= 1 ? true : false;
+            EV << "WP1: " << atWaypointCan;
+            EV << "WP2: " << atWaypointAnotherCan;
+
             updateRangeState(nowInRangeCan, inRangeOfCan, sendCanTimer, "Can");
             updateRangeState(nowInRangeAnotherCan, inRangeOfAnotherCan, sendAnotherCanTimer, "AnotherCan");
         }
@@ -214,45 +232,48 @@ void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, bool valu
 
 void HostNode::handleSlowFsmTransitions(cMessage *msg){
     FSM_Switch(*currentFsm){
-            case FSM_Enter(SLOW_SEND_TO_CAN):
-            {
-                break;
-            }
-
-            case FSM_Enter(SLOW_SEND_TO_CAN_CLOUD):
-            {
-                cMessage *req = new cMessage("7-Collect garbage");
-                send(req, "gate$o", 2);
-                sendHostSlow++;
-                updateStatusText();
-
-                cXMLElement *movementLeg = root->getElementById("2");
-
-                mobility->setLeg(movementLeg);
-
-                break;
-            }
-
-            case FSM_Enter(SLOW_SEND_TO_ANOTHER_CAN):
-            {
-                break;
-            }
-            case FSM_Enter(SLOW_SEND_TO_ANOTHER_CAN_CLOUD):
-            {
-                cMessage *req = new cMessage("9-Collect garbage");
-                send(req, "gate$o", 2);
-                sendHostSlow++;
-                updateStatusText();
-                break;
-            }
-
-            case FSM_Enter(SLOW_EXIT):
-            {
-                EV << "Final slow state reached";
-            }
+        case FSM_Enter(SLOW_SEND_TO_CAN):
+        {
+            break;
         }
 
-    delete msg;
+        case FSM_Enter(SLOW_SEND_TO_CAN_CLOUD):
+        {
+            cMessage *req = new cMessage("7-Collect garbage");
+            send(req, "gate$o", 2);
+            sendHostSlow++;
+            updateStatusText();
+
+            EV << "SLOW SEND TO CAN CLOUD ENTERED, ADDING NEXT LEG";
+            cXMLElement *movementLeg = root->getElementById("2");
+            mobility->setLeg(movementLeg);
+
+            break;
+        }
+
+        case FSM_Enter(SLOW_SEND_TO_ANOTHER_CAN):
+        {
+            break;
+        }
+        case FSM_Enter(SLOW_SEND_TO_ANOTHER_CAN_CLOUD):
+        {
+            cMessage *req = new cMessage("9-Collect garbage");
+            send(req, "gate$o", 2);
+            sendHostSlow++;
+            updateStatusText();
+
+            EV << "SLOW SEND TO ANOTHERCAN CLOUD ENTERED, ADDING NEXT LEG";
+            cXMLElement *movementLeg = root->getElementById("3");
+            mobility->setLeg(movementLeg);
+
+            break;
+        }
+
+        case FSM_Enter(SLOW_EXIT):
+        {
+            EV << "Final slow state reached";
+        }
+    }
 }
 
 void HostNode::handleSlowMessageTransmissions(cMessage *msg){
@@ -294,8 +315,6 @@ void HostNode::handleFastFsmTransitions(cMessage *msg){
             EV << "Final Fast state reached";
         }
     }
-
-    delete msg;
 }
 
 
@@ -352,20 +371,30 @@ void HostNode::handleEmptyMessageTransmissions(cMessage *msg){
     }
 }
 
-void HostNode::handleSendTimer(cMessage *msg, bool &inRange, bool &acked, const char *targetName, int gateIndex, int sendState, int altSendState){
-    if (inRange && !acked) {
-        bool shouldSend = (currentFsm->getState() == sendState || currentFsm->getState() == altSendState);
+void HostNode::handleSendTimer(cMessage *msg,
+                               bool &inRange, bool &acked, bool &atWp,
+                               const char *targetName, int gateIndex,
+                               int sendState, int altSendState)
+{
+    // If we’re done or out of range, just stop; do NOT reschedule.
+    if (acked || !inRange)
+        return;
 
-        if (shouldSend) {
-            EV << "Sending periodic message to " << targetName << ".\n";
-            cMessage *req = new cMessage((gateIndex == 0) ? "1-Is the can full?" : "4-Is the can full?");
-            send(req, "gate$o", gateIndex);
-            sendHostFast++;
-        }
+    bool stateOk = currentFsm &&
+        (currentFsm->getState() == sendState || currentFsm->getState() == altSendState);
+
+    if (stateOk && atWp) {
+        EV << "Sending periodic message to " << targetName << ".\n";
+        cMessage *req = new cMessage((gateIndex == 0) ? "1-Is the can full?" : "4-Is the can full?");
+        send(req, "gate$o", gateIndex);
+        sendHostFast++;
         updateStatusText();
-        scheduleAt(simTime() + 1, msg);
     }
+
+    // Re-arm regardless of atWp so we don't drop the timer while approaching the waypoint
+    scheduleAt(simTime() + 1, msg);
 }
+
 
 void HostNode::updateStatusText() {
     char buf[200];

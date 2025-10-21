@@ -14,6 +14,9 @@ void Mine::TurtleMobility::setLeg(inet::cXMLElement *leg){
     turtleScript = leg;
 
     nextStatement = turtleScript->getFirstChild();
+    nextChange = inet::simTime();
+    stationary = false;
+
+    scheduleUpdate();
     EV << nextStatement->str();
 }
-
