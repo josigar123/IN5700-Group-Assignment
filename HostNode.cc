@@ -347,15 +347,18 @@ void HostNode::handleFastMessageTransmissions(cMessage *msg){
 
 void HostNode::handleEmptyFsmTransitions(cMessage *msg){
     FSM_Switch(*currentFsm){
-        case FSM_Enter(EMPTY_SEND_TO_CAN):
-        {
-            break;
-        }
         case FSM_Enter(EMPTY_SEND_TO_ANOTHER_CAN):
+    {
+            cXMLElement *movementLeg = root->getElementById("2");
+            mobility->setLeg(movementLeg);
            break;
+    }
         case FSM_Enter(EMPTY_EXIT):
         {
+            cXMLElement *movementLeg = root->getElementById("3");
+            mobility->setLeg(movementLeg);
             EV << "Final Empty state reached";
+            break;
         }
     }
 }

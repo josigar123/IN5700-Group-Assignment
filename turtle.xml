@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <movements>
     <movement id="1">
-        <set x="1750" y="300" z="0" speed="300" angle="0" borderPolicy="reflect"/>
+        <set x="1750" y="300" z="0" speed="320" angle="0" borderPolicy="reflect"/>
         <turn angle="180"/>
         <forward d="1460"/>    
     </movement>
