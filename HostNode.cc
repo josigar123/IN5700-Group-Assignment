@@ -31,7 +31,7 @@ protected:
     cMessage *sendAnotherCanTimer = nullptr;
 
     // Turtle wrapper for mobility control
-    Mine::TurtleMobility *mobility;
+    Extended::TurtleMobility *mobility;
     cXMLElement *root = getEnvir()->getXMLDocument("turtle.xml"); // Contains the legs for the turtle to complete
 
     // Stat counters
@@ -94,7 +94,7 @@ void HostNode::initialize(){
 
     Node::initialize();
 
-    mobility = check_and_cast<Mine::TurtleMobility*>(getSubmodule("mobility"));
+    mobility = check_and_cast<Extended::TurtleMobility*>(getSubmodule("mobility"));
     mobility->subscribe(inet::MobilityBase::mobilityStateChangedSignal, this);
 
     canNode = check_and_cast<Node*>(getParentModule()->getSubmodule("can"));

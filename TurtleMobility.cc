@@ -8,9 +8,9 @@
 
 #include "TurtleMobility.h"
 
-Define_Module(Mine::TurtleMobility);
+Define_Module(Extended::TurtleMobility);
 
-void Mine::TurtleMobility::setLeg(inet::cXMLElement *leg){
+void Extended::TurtleMobility::setLeg(inet::cXMLElement *leg){
     turtleScript = leg;
 
     nextStatement = turtleScript->getFirstChild();

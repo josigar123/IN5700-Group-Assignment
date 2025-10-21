@@ -17,7 +17,7 @@ import inet.mobility.contract.IMobility;
 import inet.visualizer.canvas.integrated.IntegratedCanvasVisualizer;
 
 simple TurtleMobility extends inet.mobility.single.TurtleMobility{
-	@class(Mine::TurtleMobility);
+	@class(Extended::TurtleMobility);
 }
 
 simple Node

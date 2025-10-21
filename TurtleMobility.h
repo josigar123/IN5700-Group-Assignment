@@ -8,7 +8,7 @@
 
 #include "inet/mobility/single/TurtleMobility.h"
 
-namespace Mine{
+namespace Extended{
 
 class TurtleMobility : public inet::TurtleMobility
 {
