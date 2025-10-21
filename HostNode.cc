@@ -4,8 +4,6 @@
  *  Created on: Oct 16, 2025
  *      Author: joseph
  */
-
-#define FSM_DEBUG
 #include "TurtleMobility.h"
 #include "Node.h"
 
@@ -149,7 +147,6 @@ void HostNode::initialize(){
 void HostNode::handleMessage(cMessage *msg){
 
     if (msg == sendCanTimer) {
-        EV << "AT WAYPOINT1 HANDLING SEND TIMER";
         handleSendTimer(msg, inRangeOfCan, canAcked, atWaypointCan, "Can", 0, FAST_SEND_TO_CAN, SLOW_SEND_TO_CAN);
         return;
     }
@@ -219,7 +216,6 @@ void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, cObject *
 
 void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, bool value, cObject *details){
     if(signalID == Node::garbageCollectedSignalFromCan){
-            EV << "RECEIVED SIGNAL FROM CLOUD; GARBAGE IS COLLECTED; CONTINUYE TO NEXT STATE";
             FSM_Goto(*currentFsm, FAST_SEND_TO_ANOTHER_CAN);
         }
 
@@ -230,11 +226,6 @@ void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, bool valu
 
 void HostNode::handleSlowFsmTransitions(cMessage *msg){
     FSM_Switch(*currentFsm){
-        case FSM_Enter(SLOW_SEND_TO_CAN):
-        {
-            break;
-        }
-
         case FSM_Enter(SLOW_SEND_TO_CAN_CLOUD):
         {
             cMessage *req = new cMessage("7-Collect garbage");
@@ -242,15 +233,8 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
             sendHostSlow++;
             updateStatusText();
 
-            EV << "SLOW SEND TO CAN CLOUD ENTERED, ADDING NEXT LEG";
             cXMLElement *movementLeg = root->getElementById("2");
             mobility->setLeg(movementLeg);
-
-            break;
-        }
-
-        case FSM_Enter(SLOW_SEND_TO_ANOTHER_CAN):
-        {
             break;
         }
         case FSM_Enter(SLOW_SEND_TO_ANOTHER_CAN_CLOUD):
@@ -260,16 +244,9 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
             sendHostSlow++;
             updateStatusText();
 
-            EV << "SLOW SEND TO ANOTHERCAN CLOUD ENTERED, ADDING NEXT LEG";
             cXMLElement *movementLeg = root->getElementById("3");
             mobility->setLeg(movementLeg);
-
             break;
-        }
-
-        case FSM_Enter(SLOW_EXIT):
-        {
-            EV << "Final slow state reached";
         }
     }
 }
@@ -309,7 +286,6 @@ void HostNode::handleSlowMessageTransmissions(cMessage *msg){
 void HostNode::handleFastFsmTransitions(cMessage *msg){
     FSM_Switch(*currentFsm){
         case FSM_Enter(FAST_SEND_TO_ANOTHER_CAN): {
-            EV << "FAST SEND TO CAN CLOUD ENTERED, ADDING NEXT LEG";
             cXMLElement *movementLeg = root->getElementById("2");
             mobility->setLeg(movementLeg);
             break;
@@ -317,11 +293,9 @@ void HostNode::handleFastFsmTransitions(cMessage *msg){
         }
         case FSM_Enter(FAST_EXIT):
         {
-            EV << "FAST SEND TO ANOTHERCAN CLOUD ENTERED, ADDING NEXT LEG";
             cXMLElement *movementLeg = root->getElementById("3");
             mobility->setLeg(movementLeg);
             break;
-            EV << "Final Fast state reached";
         }
     }
 }
@@ -348,16 +322,15 @@ void HostNode::handleFastMessageTransmissions(cMessage *msg){
 void HostNode::handleEmptyFsmTransitions(cMessage *msg){
     FSM_Switch(*currentFsm){
         case FSM_Enter(EMPTY_SEND_TO_ANOTHER_CAN):
-    {
-            cXMLElement *movementLeg = root->getElementById("2");
+        {
+           cXMLElement *movementLeg = root->getElementById("2");
             mobility->setLeg(movementLeg);
            break;
-    }
+        }
         case FSM_Enter(EMPTY_EXIT):
         {
             cXMLElement *movementLeg = root->getElementById("3");
             mobility->setLeg(movementLeg);
-            EV << "Final Empty state reached";
             break;
         }
     }
@@ -396,7 +369,6 @@ void HostNode::handleSendTimer(cMessage *msg,
         (currentFsm->getState() == sendState || currentFsm->getState() == altSendState);
 
     if (stateOk && atWp) {
-        EV << "Sending periodic message to " << targetName << ".\n";
         cMessage *req = new cMessage((gateIndex == 0) ? "1-Is the can full?" : "4-Is the can full?");
         send(req, "gate$o", gateIndex);
         sendHostFast++;
@@ -421,13 +393,11 @@ void HostNode::updateRangeState(bool nowInRange, bool &prevInRange, cMessage *ti
     if (nowInRange && !prevInRange) {
         prevInRange = true;
         oval->setLineColor(cFigure::GREEN);
-        EV << "Entered range of " << name << ". Scheduling first message.\n";
         if (!timer->isScheduled())
             scheduleAt(simTime() + 1, timer);
     }
     else if (!nowInRange && prevInRange) {
         prevInRange = false;
-        EV << "Left range of " << name << ". Canceling timer.\n";
         cancelEvent(timer);
     }
 }
