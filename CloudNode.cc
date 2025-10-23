@@ -51,7 +51,6 @@ void CloudNode::handleMessage(cMessage *msg){
             sentCloudFast++;
             rcvdCloudFast++;
             updateStatusText();
-            emit(garbageCollectedSignalFromCan, true);
         }
         else{
             if(statusText != nullptr){
@@ -71,7 +70,6 @@ void CloudNode::handleMessage(cMessage *msg){
             sentCloudFast++;
             rcvdCloudFast++;
             updateStatusText();
-            emit(garbageCollectedSignalFromAnotherCan, true);
         }
         else{
             if(statusText != nullptr){

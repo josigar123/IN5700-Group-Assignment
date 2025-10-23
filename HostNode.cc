@@ -15,6 +15,9 @@ protected:
     Node* anotherCanNode;
     Node* cloudNode;
 
+    cChannel *slowLink;
+    cChannel *fastLink;
+
     // Variables for start-stop logic
     Coord waypointCan = Coord(290, 300);
     Coord waypointAnotherCan = Coord(290, 990);
@@ -75,7 +78,6 @@ protected:
 
     virtual bool isInRangeOf(Node *target);
     void handleSlowFsmTransitions(cMessage *msg);
-    void handleFastFsmTransitions(cMessage *msg);
     void handleEmptyFsmTransitions(cMessage *msg);
 
     void handleSlowMessageTransmissions(cMessage *msg);
@@ -101,9 +103,27 @@ void HostNode::initialize(){
     anotherCanNode = check_and_cast<Node*>(getParentModule()->getSubmodule("anotherCan"));
     cloudNode = check_and_cast<Node*>(network->getSubmodule("cloud"));
 
+    slowLink = gate("gate$o", 2)->getChannel();
+
+    if (slowLink != nullptr) {
+        // Cast to correct type for convenience
+        cDatarateChannel *dataCh = check_and_cast<cDatarateChannel*>(slowLink);
+
+        // Read current values
+        EV << "Current delay: " << dataCh->getDelay() << endl;
+        EV << "Current datarate: " << dataCh->getDatarate() << endl;
+
+        // Modify both dynamically
+        dataCh->setDelay(0.001);       // 200 ms
+        dataCh->setDatarate(2e6);    // 2 Mbps
+
+        EV << "NEW delay: " << dataCh->getDelay() << endl;
+        EV << "NEW datarate: " << dataCh->getDatarate() << endl;
+    }
+
     // Subscribe to collection signals
-    cloudNode->subscribe(Node::garbageCollectedSignalFromCan, this);
-    cloudNode->subscribe(Node::garbageCollectedSignalFromAnotherCan, this);
+    canNode->subscribe(Node::garbageCollectedSignalFromCan, this);
+    anotherCanNode->subscribe(Node::garbageCollectedSignalFromAnotherCan, this);
 
     sendCanTimer = new cMessage("sendCanTimer");
     sendAnotherCanTimer = new cMessage("sendAnotherCanTimer");
@@ -157,7 +177,7 @@ void HostNode::handleMessage(cMessage *msg){
     }
 
     switch(fsmType){
-        case FAST: handleFastMessageTransmissions(msg); handleFastFsmTransitions(msg); break;
+        case FAST: handleFastMessageTransmissions(msg); break;
         case SLOW: handleSlowMessageTransmissions(msg); handleSlowFsmTransitions(msg); break;
         case EMPTY: handleEmptyMessageTransmissions(msg); handleEmptyFsmTransitions(msg); break;
     }
@@ -215,13 +235,18 @@ void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, cObject *
 }
 
 void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, bool value, cObject *details){
+
     if(signalID == Node::garbageCollectedSignalFromCan){
+            cXMLElement *movementLeg = root->getElementById("2");
+            mobility->setLeg(movementLeg);
             FSM_Goto(*currentFsm, FAST_SEND_TO_ANOTHER_CAN);
         }
 
-        if(signalID == Node::garbageCollectedSignalFromAnotherCan){
-            FSM_Goto(*currentFsm, FAST_EXIT);
-        }
+    if(signalID == Node::garbageCollectedSignalFromAnotherCan){
+        cXMLElement *movementLeg = root->getElementById("3");
+        mobility->setLeg(movementLeg);
+        FSM_Goto(*currentFsm, FAST_EXIT);
+    }
 }
 
 void HostNode::handleSlowFsmTransitions(cMessage *msg){
@@ -233,8 +258,7 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
             sendHostSlow++;
             updateStatusText();
 
-            cXMLElement *movementLeg = root->getElementById("2");
-            mobility->setLeg(movementLeg);
+
             break;
         }
         case FSM_Enter(SLOW_SEND_TO_ANOTHER_CAN_CLOUD):
@@ -244,8 +268,7 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
             sendHostSlow++;
             updateStatusText();
 
-            cXMLElement *movementLeg = root->getElementById("3");
-            mobility->setLeg(movementLeg);
+
             break;
         }
     }
@@ -264,6 +287,8 @@ void HostNode::handleSlowMessageTransmissions(cMessage *msg){
     if(strcmp(msg->getName(), "8-Ok") == 0){
         rcvdHostSlow++;
         updateStatusText();
+        cXMLElement *movementLeg = root->getElementById("2");
+        mobility->setLeg(movementLeg);
         FSM_Goto(*currentFsm, SLOW_SEND_TO_ANOTHER_CAN);
     }
 
@@ -280,26 +305,10 @@ void HostNode::handleSlowMessageTransmissions(cMessage *msg){
         rcvdHostSlow++;
         updateStatusText();
         FSM_Goto(*currentFsm, SLOW_EXIT);
+        cXMLElement *movementLeg = root->getElementById("3");
+        mobility->setLeg(movementLeg);
     }
 }
-
-void HostNode::handleFastFsmTransitions(cMessage *msg){
-    FSM_Switch(*currentFsm){
-        case FSM_Enter(FAST_SEND_TO_ANOTHER_CAN): {
-            cXMLElement *movementLeg = root->getElementById("2");
-            mobility->setLeg(movementLeg);
-            break;
-
-        }
-        case FSM_Enter(FAST_EXIT):
-        {
-            cXMLElement *movementLeg = root->getElementById("3");
-            mobility->setLeg(movementLeg);
-            break;
-        }
-    }
-}
-
 
 void HostNode::handleFastMessageTransmissions(cMessage *msg){
     if(strcmp(msg->getName(), "3-Yes") == 0){
@@ -324,7 +333,7 @@ void HostNode::handleEmptyFsmTransitions(cMessage *msg){
         case FSM_Enter(EMPTY_SEND_TO_ANOTHER_CAN):
         {
            cXMLElement *movementLeg = root->getElementById("2");
-            mobility->setLeg(movementLeg);
+           mobility->setLeg(movementLeg);
            break;
         }
         case FSM_Enter(EMPTY_EXIT):
@@ -378,7 +387,6 @@ void HostNode::handleSendTimer(cMessage *msg,
     // Re-arm regardless of atWp so we don't drop the timer while approaching the waypoint
     scheduleAt(simTime() + 1, msg);
 }
-
 
 void HostNode::updateStatusText() {
     char buf[200];

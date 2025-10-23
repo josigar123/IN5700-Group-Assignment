@@ -47,6 +47,7 @@ void AnotherCanNode::handleMessage(cMessage *msg){
     if(strcmp(msg->getName(), "10-Ok") == 0){
         rcvdAnotherCanFast++;
         updateStatusText();
+        emit(Node::garbageCollectedSignalFromAnotherCan, true);
     }
 
     if(strcmp(msg->getName(), "4-Is the can full?") == 0){

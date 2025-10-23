@@ -16,6 +16,18 @@
 import inet.mobility.contract.IMobility;
 import inet.visualizer.canvas.integrated.IntegratedCanvasVisualizer;
 
+channel SlowLink extends ned.DatarateChannel{
+    parameters:
+        delay = 400ms;
+        datarate = 1Mbps;
+}
+
+channel FastLink extends ned.DatarateChannel{
+    parameters:
+        delay = 400ms;
+        datarate = 4Mbps;
+}
+
 simple TurtleMobility extends inet.mobility.single.TurtleMobility{
 	@class(Extended::TurtleMobility);
 }
@@ -39,12 +51,14 @@ simple CanNode extends Node {
     parameters:
         @class(CanNode);
         @display("i=block/bucket");
+        @signal[garbageCollectedFromCan](type=bool);
 }
 
 simple AnotherCanNode extends Node {
     parameters:
         @class(AnotherCanNode);
         @display("i=block/bucket");
+        @signal[garbageCollectedFromAnotherCan](type=bool);
 }
 
 simple CloudNode extends Node {
@@ -52,8 +66,6 @@ simple CloudNode extends Node {
     parameters:
         @class(CloudNode);
         @display("i=device/server");
-        @signal[garbageCollectedFromCan](type=bool);
-        @signal[garbageCollectedFromAnotherCan](type=bool);
 }
 
 module HostNode extends Node
@@ -107,11 +119,11 @@ network GarbageCollectionSystem
         }
 	
     connections:
-        host.gate[0] <--> can.gate[0];
-        host.gate[1] <--> anotherCan.gate[0];
-        host.gate[2] <--> cloud.gate[0];
+        host.gate[0] <--> FastLink <--> can.gate[0];
+        host.gate[1] <-->  FastLink <--> anotherCan.gate[0];
+        host.gate[2] <--> SlowLink <--> cloud.gate[0];
         
-        can.gate[1] <--> cloud.gate[1];
-        anotherCan.gate[1] <--> cloud.gate[2];
+        can.gate[1] <--> FastLink <--> cloud.gate[1];
+        anotherCan.gate[1] <--> FastLink <--> cloud.gate[2];
 }
 
