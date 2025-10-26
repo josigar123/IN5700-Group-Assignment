@@ -3,12 +3,12 @@
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // This program is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 //
@@ -16,17 +16,25 @@
 import inet.mobility.contract.IMobility;
 import inet.visualizer.canvas.integrated.IntegratedCanvasVisualizer;
 
-channel SlowLink extends ned.DatarateChannel{
+channel RealisticDelayChannel extends ned.DatarateChannel
+{
     parameters:
-        delay = 400ms;
-        datarate = 1Mbps;
+        double baseLatency @unit(ms) = default(0ms);  // Base extra latency (time):contentReference[oaicite:2]{index=2}
+        @class(RealisticDelayChannel);              // Link to C++ channel class
 }
 
-channel FastLink extends ned.DatarateChannel{
+channel SlowLink extends RealisticDelayChannel {
     parameters:
-        delay = 400ms;
-        datarate = 4Mbps;
+        datarate = 1Mbps;
+        baseLatency = 5000ms;  // e.g. higher base latency for a "slow" cellular link
 }
+
+channel FastLink extends RealisticDelayChannel {
+    parameters:
+        datarate = 4Mbps;
+        baseLatency = 50ms;   // e.g. lower base latency for a "fast" WiFi link
+}
+
 
 simple TurtleMobility extends inet.mobility.single.TurtleMobility{
 	@class(Extended::TurtleMobility);
@@ -44,7 +52,7 @@ simple Node
         @class(Node);
 
     gates:
-        inout gate[numGates];  
+        inout gate[numGates];
 }
 
 simple CanNode extends Node {
@@ -87,7 +95,7 @@ network GarbageCollectionSystem
     @figure[outerroad](type=polyline; points=1700,200,150,200,150,1100,1700,1100; lineColor=black; lineWidth=4);
     @figure[innerroad](type=polyline; points=1700,450,400,450,400,850,1700,850; lineColor=black; lineWidth=4);
 	
-	        
+	
     submodules:
         visualizer: IntegratedCanvasVisualizer{
         	@display("p=1500,50");
@@ -122,7 +130,7 @@ network GarbageCollectionSystem
         host.gate[0] <--> FastLink <--> can.gate[0];
         host.gate[1] <-->  FastLink <--> anotherCan.gate[0];
         host.gate[2] <--> SlowLink <--> cloud.gate[0];
-        
+
         can.gate[1] <--> FastLink <--> cloud.gate[1];
         anotherCan.gate[1] <--> FastLink <--> cloud.gate[2];
 }
