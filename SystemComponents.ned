@@ -26,13 +26,13 @@ channel RealisticDelayChannel extends ned.DatarateChannel
 channel SlowLink extends RealisticDelayChannel {
     parameters:
         datarate = 1Mbps;
-        baseLatency = 5000ms;  // e.g. higher base latency for a "slow" cellular link
+        baseLatency = 400ms;  // e.g. higher base latency for a "slow" cellular link
 }
 
 channel FastLink extends RealisticDelayChannel {
     parameters:
         datarate = 4Mbps;
-        baseLatency = 50ms;   // e.g. lower base latency for a "fast" WiFi link
+        baseLatency = 200ms;   // e.g. lower base latency for a "fast" WiFi link
 }
 
 

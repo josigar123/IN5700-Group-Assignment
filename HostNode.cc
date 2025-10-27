@@ -24,6 +24,12 @@ protected:
     cChannel *slowLink;
     cChannel *fastLink;
 
+    cTextFigure *delayStatsHeader = nullptr;
+    cTextFigure *hostDelayStats = nullptr;
+    cTextFigure *canDelayStats = nullptr;
+    cTextFigure *anotherCanDelayStats = nullptr;
+    cTextFigure *cloudDelayStats = nullptr;
+
     // Variables for start-stop logic
     Coord waypointCan = Coord(290, 300);
     Coord waypointAnotherCan = Coord(290, 990);
@@ -95,6 +101,7 @@ protected:
     void updateRangeState(bool nowInRange, bool &prevInRange, cMessage *timer, const char *name);
 
     void updateStatusText();
+    void renderInitialDelayStats();
 
     virtual void finish() override;
     double getDelayFromChannel(const char* gateName, int index);
@@ -114,24 +121,6 @@ void HostNode::initialize(){
     canNode = check_and_cast<Node*>(getParentModule()->getSubmodule("can"));
     anotherCanNode = check_and_cast<Node*>(getParentModule()->getSubmodule("anotherCan"));
     cloudNode = check_and_cast<Node*>(network->getSubmodule("cloud"));
-
-    slowLink = gate("gate$o", 2)->getChannel();
-
-    if (slowLink != nullptr) {
-        // Cast to correct type for convenience
-
-        RealisticDelayChannel *dataCh = check_and_cast<RealisticDelayChannel*>(slowLink);
-
-        EV << "Current delay: " << dataCh->getCurrentDelay() << endl;
-        EV << "Current datarate: " << dataCh->getDatarate() << endl;
-
-        // Modify both dynamically
-        //dataCh->setDelay(0.001);       // 200 ms
-        dataCh->setDatarate(2e6);    // 2 Mbps
-
-        EV << "NEW delay: " << dataCh->getCurrentDelay() << endl;
-        EV << "NEW datarate: " << dataCh->getDatarate() << endl;
-    }
 
     // Subscribe to collection signals
     canNode->subscribe(Node::garbageCollectedSignalFromCan, this);
@@ -174,6 +163,9 @@ void HostNode::initialize(){
     }
 
     canvas->addFigure(statusText);
+
+    // Renders status info based on config
+    renderInitialDelayStats();
 }
 
 void HostNode::handleMessage(cMessage *msg){
@@ -226,6 +218,7 @@ void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, cObject *
             // cast to non-const MobilityBase
             MobilityBase *m = check_and_cast<MobilityBase *>(source);
 
+            // Update coverage circle placement
             if (mobility != nullptr) {
                 auto pos = mobility->getCurrentPosition();
                 oval->setBounds(cFigure::Rectangle(pos.x - range, pos.y - range, range*2, range*2));
@@ -238,6 +231,7 @@ void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, cObject *
             bool nowInRangeCan = isInRangeOf(canNode);
             bool nowInRangeAnotherCan = isInRangeOf(anotherCanNode);
 
+            // Check that host is at waypoint with some margin
             atWaypointCan = mobility->getCurrentPosition().distance(waypointCan) <= 1 ? true : false;
             atWaypointAnotherCan = mobility->getCurrentPosition().distance(waypointAnotherCan) <= 1 ? true : false;
 
@@ -248,6 +242,7 @@ void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, cObject *
 
 void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, bool value, cObject *details){
 
+    // Load appropriate leg for next movement based on the signal received
     if(signalID == Node::garbageCollectedSignalFromCan){
             cXMLElement *movementLeg = root->getElementById("2");
             mobility->setLeg(movementLeg);
@@ -269,8 +264,6 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
             send(req, "gate$o", 2);
             sendHostSlow++;
             updateStatusText();
-
-
             break;
         }
         case FSM_Enter(SLOW_SEND_TO_ANOTHER_CAN_CLOUD):
@@ -279,8 +272,6 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
             send(req, "gate$o", 2);
             sendHostSlow++;
             updateStatusText();
-
-
             break;
         }
     }
@@ -297,6 +288,7 @@ void HostNode::handleSlowMessageTransmissions(cMessage *msg){
     }
 
     if(strcmp(msg->getName(), "8-Ok") == 0){
+        // Received confirmation from cloud
         rcvdHostSlow++;
         updateStatusText();
         cXMLElement *movementLeg = root->getElementById("2");
@@ -314,6 +306,7 @@ void HostNode::handleSlowMessageTransmissions(cMessage *msg){
     }
 
     if(strcmp(msg->getName(), "10-Ok") == 0){
+        // Received confirmation from cloud
         rcvdHostSlow++;
         updateStatusText();
         FSM_Goto(*currentFsm, SLOW_EXIT);
@@ -422,21 +415,6 @@ void HostNode::updateRangeState(bool nowInRange, bool &prevInRange, cMessage *ti
     }
 }
 
-/*
-double HostNode::getDelayFromChannel(const char* gateName, int index) {
-    cGate* g = gate(gateName, index);
-    if (!g) return 0;
-    cChannel* ch = g->getChannel();
-    if (!ch) return 0;
-
-    if (auto realisticCh = dynamic_cast<RealisticDelayChannel*>(ch)) {
-        return SIMTIME_DBL(realisticCh->getCurrentDelay());  // safe public access
-    }
-    return 0;
-}
-*/
-// Safe helpers 
-
 static double channelDelay(cGate *g) {
     if (!g) return 0;
     cChannel *ch = g->getChannel();
@@ -458,16 +436,66 @@ static double delayFrom(cModule *m, const char* gateName, int ix) {
     return channelDelay(g);
 }
 
+void HostNode::renderInitialDelayStats(){
+
+    delayStatsHeader = new cTextFigure("headerDelayStats");
+    delayStatsHeader->setFont(cFigure::Font("Arial", 30, omnetpp::cAbstractImageFigure::FONT_BOLD));
+    delayStatsHeader->setPosition(cFigure::Point(2100, 25));
+
+    switch(fsmType){
+    case SLOW: delayStatsHeader->setText("Cloud-based solution with slow messages"); break;
+    case FAST: delayStatsHeader->setText("Fog-based solution with fast messages"); break;
+    case EMPTY: delayStatsHeader->setText("Fog-based solution with no messages"); break;
+    }
 
 
+    hostDelayStats = new cTextFigure("headerDelayStats");
+    hostDelayStats->setFont(cFigure::Font("Arial", 30));
+    hostDelayStats->setPosition(cFigure::Point(2100, 150));
+
+    canDelayStats = new cTextFigure("canDelayStats");
+    canDelayStats->setFont(cFigure::Font("Arial", 30));
+    canDelayStats->setPosition(cFigure::Point(2100, 350));
+
+    anotherCanDelayStats = new cTextFigure("anotherCanDelayStats");
+    anotherCanDelayStats->setFont(cFigure::Font("Arial", 30));
+    anotherCanDelayStats->setPosition(cFigure::Point(2100, 450));
+
+    cloudDelayStats = new cTextFigure("cloudDelayStats");
+    cloudDelayStats->setFont(cFigure::Font("Arial", 30));
+    cloudDelayStats->setPosition(cFigure::Point(2100, 550));
+
+    hostDelayStats->setText("Slow connection from the smartphone to others (time it takes) = \n"
+                            "Slow connection from others to the smartphone (time it takes) = \n"
+                            "Fast connection from the smartphone to others (time it takes) = \n"
+                            "Fast connection from others to the smartphone (time it takes) = \n");
+
+    canDelayStats->setText("Connection from the can to others (time it takes) = \n"
+                           "Connection from others to the can (time it takes) = \n");
+
+    anotherCanDelayStats->setText("Connection from the anotherCan to others (time it takes) = \n"
+                                  "Connection from others to the anotherCan (time it takes) = \n");
+
+    cloudDelayStats->setText("Slow connection from the Cloud to others (time it takes) = \n"
+                             "Slow connection from others to the Cloud (time it takes) = \n"
+                             "Fast connection from the Cloud to others (time it takes) = \n"
+                             "Fast connection from others to the Cloud (time it takes) = \n");
+
+    canvas->addFigure(delayStatsHeader);
+    canvas->addFigure(hostDelayStats);
+    canvas->addFigure(canDelayStats);
+    canvas->addFigure(anotherCanDelayStats);
+    canvas->addFigure(cloudDelayStats);
+
+}
 
 void HostNode::finish() {
-    std::ostringstream out;
+    std::ostringstream hostOut;
+    std::ostringstream canOut;
+    std::ostringstream anotherCanOut;
+    std::ostringstream cloudOut;
 
-    // Which config are we running?
-    const char* cfg = getEnvir()->getConfigEx()->getActiveConfigName();
-
-    // Host gates (exactly 3 as per your NED)
+    // Host gates (exactly 3 as per NED)
     // 0: host <-> can     (FastLink)
     // 1: host <-> anotherCan (FastLink)
     // 2: host <-> cloud   (SlowLink)
@@ -493,72 +521,74 @@ void HostNode::finish() {
     double cloud_fast_to_others  = max2(cloud_to_can, cloud_to_another);
     double others_fast_to_cloud  = max2(can_to_cloud, another_to_cloud);
 
-    // Build per-config output
-    if (strcmp(cfg, "GarbageInTheCansAndSlow") == 0) {
-        // Cloud-based: host uses slow link to cloud; cans talk fast to host/cloud as needed
-        out << "Slow connection from the smartphone to others (time it takes) = " << host_to_cloud << "s\n";
-        out << "Slow connection from others to the smartphone (time it takes) = " << host_to_cloud << "s\n";
-        out << "Fast connection from the smartphone to others (time it takes) = " << host_fast_to_others << "s\n";
-        out << "Fast connection from others to the smartphone (time it takes) = " << others_fast_to_host << "s\n\n";
+    switch(fsmType){
+        case SLOW:
+        {
 
-        out << "Connection from the can to others (time it takes) = " << can_to_cloud << "s\n";
-        out << "Connection from others to the can (time it takes) = " << cloud_to_can << "s\n\n";
+            // Cloud-based: host uses slow link to cloud; cans talk fast to host/cloud as needed
+            hostOut << "Slow connection from the smartphone to others (time it takes) = " << host_to_cloud << "\n";
+            hostOut << "Slow connection from others to the smartphone (time it takes) = " << host_to_cloud << "\n";
+            hostOut << "Fast connection from the smartphone to others (time it takes) = " << host_fast_to_others << "\n";
+            hostOut << "Fast connection from others to the smartphone (time it takes) = " << others_fast_to_host << "\n";
 
-        out << "Connection from the anotherCan to others (time it takes) = " << another_to_cloud << "s\n";
-        out << "Connection from others to the anotherCan (time it takes) = " << cloud_to_another << "s\n\n";
+            canOut << "Connection from the can to others (time it takes) = " << can_to_cloud << "\n";
+            canOut << "Connection from others to the can (time it takes) = " << cloud_to_can << "\n\n";
 
-        out << "Slow connection from the Cloud to others (time it takes) = " << cloud_to_host_slow << "s\n";
-        out << "Slow connection from others to the Cloud (time it takes) = " << host_to_cloud << "s\n";
-        out << "Fast connection from the Cloud to others (time it takes) = " << cloud_fast_to_others << "s\n";
-        out << "Fast connection from others to the Cloud (time it takes) = " << others_fast_to_cloud << "s\n";
-    }
-    else if (strcmp(cfg, "GarbageInTheCansAndFast") == 0) {
-        // Fog-based: cans talk directly to cloud (fast); host slow link unused for results
-        out << "Slow connection from the smartphone to others (time it takes) = 0s\n";
-        out << "Slow connection from others to the smartphone (time it takes) = 0s\n";
-        out << "Fast connection from the smartphone to others (time it takes) = " << host_fast_to_others << "s\n";
-        out << "Fast connection from others to the smartphone (time it takes) = " << others_fast_to_host << "s\n\n";
+            anotherCanOut << "Connection from the anotherCan to others (time it takes) = " << another_to_cloud << "\n";
+            anotherCanOut << "Connection from others to the anotherCan (time it takes) = " << cloud_to_another << "\n";
 
-        out << "Connection from the can to others (time it takes) = " << can_to_cloud << "s\n";
-        out << "Connection from others to the can (time it takes) = " << cloud_to_can << "s\n\n";
+            cloudOut << "Slow connection from the Cloud to others (time it takes) = " << cloud_to_host_slow << "\n";
+            cloudOut << "Slow connection from others to the Cloud (time it takes) = " << host_to_cloud << "\n";
+            cloudOut << "Fast connection from the Cloud to others (time it takes) = 0\n";
+            cloudOut << "Fast connection from others to the Cloud (time it takes) = 0\n";
+            break;
+        }
+        case FAST:
+        {
+            // Fog-based: cans talk directly to cloud (fast); host slow link unused for results
+            hostOut << "Slow connection from the smartphone to others (time it takes) = 0\n";
+            hostOut << "Slow connection from others to the smartphone (time it takes) = 0\n";
+            hostOut << "Fast connection from the smartphone to others (time it takes) = " << host_fast_to_others << "\n";
+            hostOut << "Fast connection from others to the smartphone (time it takes) = " << others_fast_to_host << "\n";
 
-        out << "Connection from the anotherCan to others (time it takes) = " << another_to_cloud << "s\n";
-        out << "Connection from others to the anotherCan (time it takes) = " << cloud_to_another << "s\n\n";
+            canOut << "Connection from the can to others (time it takes) = " << can_to_cloud << "\n";
+            canOut << "Connection from others to the can (time it takes) = " << cloud_to_can << "\n";
 
-        out << "Slow connection from the Cloud to others (time it takes) = 0s\n";
-        out << "Slow connection from others to the Cloud (time it takes) = 0s\n";
-        out << "Fast connection from the Cloud to others (time it takes) = " << cloud_fast_to_others << "s\n";
-        out << "Fast connection from others to the Cloud (time it takes) = " << others_fast_to_cloud << "s\n";
-    }
-    else if (strcmp(cfg, "NoGarbageInTheCans") == 0) {
-        // No-garbage: only query/reply between host and cans matters; cloud paths effectively 0
-        out << "Slow connection from the smartphone to others (time it takes) = 0s\n";
-        out << "Slow connection from others to the smartphone (time it takes) = 0s\n";
-        out << "Fast connection from the smartphone to others (time it takes) = " << host_fast_to_others << "s\n";
-        out << "Fast connection from others to the smartphone (time it takes) = " << others_fast_to_host << "s\n\n";
+            anotherCanOut << "Connection from the anotherCan to others (time it takes) = " << another_to_cloud << "\n";
+            anotherCanOut << "Connection from others to the anotherCan (time it takes) = " << cloud_to_another << "\n";
 
-        out << "Connection from the can to others (time it takes) = " << can_to_cloud << "s\n";
-        out << "Connection from others to the can (time it takes) = " << cloud_to_can << "s\n\n";
+            cloudOut << "Slow connection from the Cloud to others (time it takes) = 0\n";
+            cloudOut << "Slow connection from others to the Cloud (time it takes) = 0\n";
+            cloudOut << "Fast connection from the Cloud to others (time it takes) = " << cloud_fast_to_others << "\n";
+            cloudOut << "Fast connection from others to the Cloud (time it takes) = " << others_fast_to_cloud << "\n";
+            break;
+        }
+        case EMPTY:
+        {
+            // No-garbage: only query/reply between host and cans matters; cloud paths effectively 0
+            hostOut << "Slow connection from the smartphone to others (time it takes) = 0\n";
+            hostOut << "Slow connection from others to the smartphone (time it takes) = 0\n";
+            hostOut << "Fast connection from the smartphone to others (time it takes) = " << host_fast_to_others << "\n";
+            hostOut << "Fast connection from others to the smartphone (time it takes) = " << others_fast_to_host << "\n";
 
-        out << "Connection from the anotherCan to others (time it takes) = " << another_to_cloud << "s\n";
-        out << "Connection from others to the anotherCan (time it takes) = " << cloud_to_another << "s\n\n";
+            canOut << "Connection from the can to others (time it takes) = " << can_to_cloud << "\n";
+            canOut << "Connection from others to the can (time it takes) = " << cloud_to_can << "\n";
 
-        out << "Slow connection from the Cloud to others (time it takes) = 0s\n";
-        out << "Slow connection from others to the Cloud (time it takes) = 0s\n";
-        out << "Fast connection from the Cloud to others (time it takes) = 0s\n";
-        out << "Fast connection from others to the Cloud (time it takes) = 0s\n";
-    }
-    else {
-        out << "(Unknown config)\n";
-    }
+            anotherCanOut << "Connection from the anotherCan to others (time it takes) = " << another_to_cloud << "\n";
+            anotherCanOut << "Connection from others to the anotherCan (time it takes) = " << cloud_to_another << "\n";
 
-    // Write to log
-    EV_INFO << "\n--- Simulation Delay Summary (" << cfg << ") ---\n" << out.str() << "\n";
-
-    if (auto text = dynamic_cast<cTextFigure*>(canvas->getRootFigure()->getFigureByPath("configTextBody"))) {
-        text->setText(out.str().c_str());
+            cloudOut << "Slow connection from the Cloud to others (time it takes) = 0\n";
+            cloudOut << "Slow connection from others to the Cloud (time it takes) = 0\n";
+            cloudOut << "Fast connection from the Cloud to others (time it takes) = 0\n";
+            cloudOut << "Fast connection from others to the Cloud (time it takes) = 0\n";
+            break;
+        }
     }
 
+    hostDelayStats->setText(hostOut.str().c_str());
+    canDelayStats->setText(canOut.str().c_str());
+    anotherCanDelayStats->setText(anotherCanOut.str().c_str());
+    cloudDelayStats->setText(cloudOut.str().c_str());
 }
 
 

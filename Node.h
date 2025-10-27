@@ -38,7 +38,6 @@ protected:
     virtual void handleMessage(cMessage *msg) override;
 
     // Helper utilities
-    virtual void renderText();
     void renderCoverageCircle(double x, double y);
 };
 

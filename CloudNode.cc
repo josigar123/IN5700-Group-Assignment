@@ -36,7 +36,7 @@ void CloudNode::initialize(){
     statusText->setFont(cFigure::Font("Arial", 36));
     updateStatusText();
 
-    statusText->setPosition(cFigure::Point(x - 500, y - 100)); // Above the node
+    statusText->setPosition(cFigure::Point(x - 500, y - 130)); // Above the node
 
     canvas->addFigure(statusText);
     }
