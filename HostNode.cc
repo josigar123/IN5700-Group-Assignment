@@ -21,9 +21,11 @@ protected:
     Node* anotherCanNode;
     Node* cloudNode;
 
+    // Member for modifying comm links
     cChannel *slowLink;
     cChannel *fastLink;
 
+    // Text figures for holding the delay statistics to be displayed at the end
     cTextFigure *delayStatsHeader = nullptr;
     cTextFigure *hostDelayStats = nullptr;
     cTextFigure *canDelayStats = nullptr;
@@ -31,8 +33,8 @@ protected:
     cTextFigure *cloudDelayStats = nullptr;
 
     // Variables for start-stop logic
-    Coord waypointCan = Coord(290, 300);
-    Coord waypointAnotherCan = Coord(290, 990);
+    Coord waypointCan = Coord(290, 300); // Waypoint found by visual analysis
+    Coord waypointAnotherCan = Coord(290, 990); // Waypoint found by visual analysis
     bool atWaypointCan = false;
     bool atWaypointAnotherCan = false;
 
@@ -57,9 +59,12 @@ protected:
     // Text containing stats
     cTextFigure *statusText = nullptr;
 
+    // Easy lookup of config, no need to str compare
     enum FsmType { FAST, SLOW, EMPTY };
     FsmType fsmType;
 
+    // Defines the three state machines, one for each config at compile tieme, and a pointer which is given a value at runtime
+    // pointing to the appropriate state machine
     cFSM *currentFsm; // For storing the appropriate FSM
     cFSM fastFsm;
     enum{
@@ -113,11 +118,14 @@ Define_Module(HostNode);
 
 void HostNode::initialize(){
 
+    // Init general fields in Node.h
     Node::initialize();
 
+    // Subscribe to the signal for mobilitystatechanged
     mobility = check_and_cast<Extended::TurtleMobility*>(getSubmodule("mobility"));
     mobility->subscribe(inet::MobilityBase::mobilityStateChangedSignal, this);
 
+    // Fetch the system nodes for access
     canNode = check_and_cast<Node*>(getParentModule()->getSubmodule("can"));
     anotherCanNode = check_and_cast<Node*>(getParentModule()->getSubmodule("anotherCan"));
     cloudNode = check_and_cast<Node*>(network->getSubmodule("cloud"));
@@ -126,6 +134,7 @@ void HostNode::initialize(){
     canNode->subscribe(Node::garbageCollectedSignalFromCan, this);
     anotherCanNode->subscribe(Node::garbageCollectedSignalFromAnotherCan, this);
 
+    // Create self messages for retries while waiting for ACK from cans
     sendCanTimer = new cMessage("sendCanTimer");
     sendAnotherCanTimer = new cMessage("sendAnotherCanTimer");
 
@@ -157,6 +166,7 @@ void HostNode::initialize(){
     statusText->setFont(cFigure::Font("Arial", 36));
     updateStatusText();
 
+    // Place initial status text
     if (mobility) {
         auto pos = mobility->getCurrentPosition();
         statusText->setPosition(cFigure::Point(pos.x - 500, pos.y - 100)); // Above the node
@@ -190,6 +200,8 @@ void HostNode::handleMessage(cMessage *msg){
 }
 
 bool HostNode::isInRangeOf(Node* target) {
+    // Simple method for checking if coverage circles are overlapping a given target, only used on Can and AnotherCan since Cloud is all encompassing
+
     // Host must have mobility, otherwise no need to check
     if (!mobility) return false;
 
@@ -212,8 +224,13 @@ bool HostNode::isInRangeOf(Node* target) {
 }
 
 void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, cObject *obj, cObject *details){
-    Enter_Method_Silent();
+    Enter_Method_Silent(); // Needed to work correctly, compiler suggestion
 
+    // If we have changed position (mobility signals a state)
+    //  - Update coverage circles
+    //  - Check if we are in range of a can
+    //  - Check if we are at a waypoint
+    //  - Manage send timers by checking if we have been in range and are now no longer in range (we have driven past)
     if (signalID == MobilityBase::mobilityStateChangedSignal) {
             // cast to non-const MobilityBase
             MobilityBase *m = check_and_cast<MobilityBase *>(source);
@@ -242,7 +259,8 @@ void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, cObject *
 
 void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, bool value, cObject *details){
 
-    // Load appropriate leg for next movement based on the signal received
+    // Load appropriate leg for next movement based on the signal received, this method is only in use in the FAST config, that is why you see leg loading
+    // in association with slow and empty concerning methods.
     if(signalID == Node::garbageCollectedSignalFromCan){
             cXMLElement *movementLeg = root->getElementById("2");
             mobility->setLeg(movementLeg);
@@ -260,7 +278,7 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
     FSM_Switch(*currentFsm){
         case FSM_Enter(SLOW_SEND_TO_CAN_CLOUD):
         {
-            cMessage *req = new cMessage("7-Collect garbage");
+            cMessage *req = Node::createMessage(MSG_7_COLLECT_GARBAGE);
             send(req, "gate$o", 2);
             sendHostSlow++;
             updateStatusText();
@@ -268,7 +286,7 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
         }
         case FSM_Enter(SLOW_SEND_TO_ANOTHER_CAN_CLOUD):
         {
-            cMessage *req = new cMessage("9-Collect garbage");
+            cMessage *req = Node::createMessage(MSG_9_COLLECT_GARBAGE);
             send(req, "gate$o", 2);
             sendHostSlow++;
             updateStatusText();
@@ -278,58 +296,81 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
 }
 
 void HostNode::handleSlowMessageTransmissions(cMessage *msg){
-    if(strcmp(msg->getName(), "3-Yes") == 0){
-        // Received confirmation from Can
-        rcvdHostFast++;
-        updateStatusText();
-        canAcked = true;
-        cancelEvent(sendCanTimer);
-        FSM_Goto(*currentFsm, SLOW_SEND_TO_CAN_CLOUD);
+
+    int msgId = Node::getMsgId(msg);
+
+    switch(msgId){
+        case MSG_3_YES:
+        {
+            // Received confirmation from Can
+            rcvdHostFast++;
+            updateStatusText();
+            canAcked = true;
+            cancelEvent(sendCanTimer);
+            FSM_Goto(*currentFsm, SLOW_SEND_TO_CAN_CLOUD);
+            break;
+        }
+
+        case MSG_8_OK:
+        {
+            // Received confirmation from cloud
+            rcvdHostSlow++;
+            updateStatusText();
+            cXMLElement *movementLeg = root->getElementById("2");
+            mobility->setLeg(movementLeg);
+            FSM_Goto(*currentFsm, SLOW_SEND_TO_ANOTHER_CAN);
+            break;
+        }
+
+        case MSG_6_YES:
+        {
+            // Received confirmation from AnotherCan
+            rcvdHostFast++;
+            updateStatusText();
+            anotherCanAcked = true;
+            cancelEvent(sendAnotherCanTimer);
+            FSM_Goto(*currentFsm, SLOW_SEND_TO_ANOTHER_CAN_CLOUD);
+            break;
+        }
+
+        case MSG_10_OK:
+        {
+            // Received confirmation from cloud
+            rcvdHostSlow++;
+            updateStatusText();
+            FSM_Goto(*currentFsm, SLOW_EXIT);
+            cXMLElement *movementLeg = root->getElementById("3");
+            mobility->setLeg(movementLeg);
+            break;
+
+        }
     }
 
-    if(strcmp(msg->getName(), "8-Ok") == 0){
-        // Received confirmation from cloud
-        rcvdHostSlow++;
-        updateStatusText();
-        cXMLElement *movementLeg = root->getElementById("2");
-        mobility->setLeg(movementLeg);
-        FSM_Goto(*currentFsm, SLOW_SEND_TO_ANOTHER_CAN);
-    }
-
-    if(strcmp(msg->getName(), "6-Yes") == 0){
-        // Received confirmation from AnotherCan
-        rcvdHostFast++;
-        updateStatusText();
-        anotherCanAcked = true;
-        cancelEvent(sendAnotherCanTimer);
-        FSM_Goto(*currentFsm, SLOW_SEND_TO_ANOTHER_CAN_CLOUD);
-    }
-
-    if(strcmp(msg->getName(), "10-Ok") == 0){
-        // Received confirmation from cloud
-        rcvdHostSlow++;
-        updateStatusText();
-        FSM_Goto(*currentFsm, SLOW_EXIT);
-        cXMLElement *movementLeg = root->getElementById("3");
-        mobility->setLeg(movementLeg);
-    }
 }
 
 void HostNode::handleFastMessageTransmissions(cMessage *msg){
-    if(strcmp(msg->getName(), "3-Yes") == 0){
-        // Received confirmation from Can
-        rcvdHostFast++;
-        updateStatusText();
-        canAcked = true;
-        cancelEvent(sendCanTimer);
-    }
 
-    if(strcmp(msg->getName(), "6-Yes") == 0){
-        // Received confirmation from AnotherCan
-        rcvdHostFast++;
-        updateStatusText();
-        anotherCanAcked = true;
-        cancelEvent(sendAnotherCanTimer);
+    int msgId = Node::getMsgId(msg);
+
+    switch(msgId){
+    case MSG_3_YES:
+        {
+            // Received confirmation from Can
+            rcvdHostFast++;
+            updateStatusText();
+            canAcked = true;
+            cancelEvent(sendCanTimer);
+            break;
+        }
+    case MSG_6_YES:
+        {
+            // Received confirmation from AnotherCan
+            rcvdHostFast++;
+            updateStatusText();
+            anotherCanAcked = true;
+            cancelEvent(sendAnotherCanTimer);
+            break;
+        }
     }
 }
 
@@ -351,22 +392,28 @@ void HostNode::handleEmptyFsmTransitions(cMessage *msg){
 }
 
 void HostNode::handleEmptyMessageTransmissions(cMessage *msg){
-    if(strcmp(msg->getName(), "2-No") == 0){
-        // Received confirmation from Can
-        rcvdHostFast++;
-        updateStatusText();
-        canAcked = true;
-        cancelEvent(sendCanTimer);
-        FSM_Goto(*currentFsm, EMPTY_SEND_TO_ANOTHER_CAN);
-    }
 
-    if(strcmp(msg->getName(), "5-No") == 0){
-        // Received confirmation from AnotherCan
-        rcvdHostFast++;
-        updateStatusText();
-        anotherCanAcked = true;
-        cancelEvent(sendAnotherCanTimer);
-        FSM_Goto(*currentFsm, EMPTY_EXIT);
+    int msgId = Node::getMsgId(msg);
+    switch(msgId){
+        case MSG_2_NO:
+            {
+                rcvdHostFast++;
+                updateStatusText();
+                canAcked = true;
+                cancelEvent(sendCanTimer);
+                FSM_Goto(*currentFsm, EMPTY_SEND_TO_ANOTHER_CAN);
+                break;
+        }
+        case MSG_5_NO:
+            {
+                // Received confirmation from AnotherCan
+                rcvdHostFast++;
+                updateStatusText();
+                anotherCanAcked = true;
+                cancelEvent(sendAnotherCanTimer);
+                FSM_Goto(*currentFsm, EMPTY_EXIT);
+                break;
+         }
     }
 }
 
@@ -379,11 +426,14 @@ void HostNode::handleSendTimer(cMessage *msg,
     if (acked || !inRange)
         return;
 
+    // Are we in a state where a send should be done?
     bool stateOk = currentFsm &&
         (currentFsm->getState() == sendState || currentFsm->getState() == altSendState);
 
+    // Are we in a sendable state, and is the waypoint reached?
     if (stateOk && atWp) {
-        cMessage *req = new cMessage((gateIndex == 0) ? "1-Is the can full?" : "4-Is the can full?");
+        // gateIndex == 0 means we are sending to can, else (1) we send to  anotherCan
+        cMessage *req = (gateIndex == 0) ? Node::createMessage(MSG_1_IS_CAN_FULL) : Node::createMessage(MSG_4_IS_CAN_FULL);
         send(req, "gate$o", gateIndex);
         sendHostFast++;
         updateStatusText();
