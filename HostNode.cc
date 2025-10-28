@@ -6,12 +6,11 @@
  */
 #include "TurtleMobility.h"
 #include "Node.h"
+#include "DelayUtils.h"
 #include "inet/mobility/base/MobilityBase.h"
 #include "RealisticDelayChannel.h"
+#include "DelayUtils.h"
 #include <sstream>
-
-
-
 
 class HostNode : public Node, public cListener{
 
@@ -91,6 +90,7 @@ protected:
 protected:
     virtual void initialize() override;
     virtual void handleMessage(cMessage *msg) override;
+    virtual void finish() override;
     virtual void receiveSignal(cComponent *source, simsignal_t signalID, bool value, cObject *details) override;
     virtual void receiveSignal(cComponent *source, simsignal_t signalID, cObject *obj, cObject *details) override;
 
@@ -108,9 +108,10 @@ protected:
     void updateStatusText();
     void renderInitialDelayStats();
 
-    virtual void finish() override;
     double getDelayFromChannel(const char* gateName, int index);
     double delayOn(const char* gateName, int ix);
+
+    void ackReceived(bool &ackedFlag, cMessage *timer, int nextState, int &rcvdCounter);
 
 };
 
@@ -300,16 +301,8 @@ void HostNode::handleSlowMessageTransmissions(cMessage *msg){
     int msgId = Node::getMsgId(msg);
 
     switch(msgId){
-        case MSG_3_YES:
-        {
-            // Received confirmation from Can
-            rcvdHostFast++;
-            updateStatusText();
-            canAcked = true;
-            cancelEvent(sendCanTimer);
-            FSM_Goto(*currentFsm, SLOW_SEND_TO_CAN_CLOUD);
-            break;
-        }
+        case MSG_3_YES: ackReceived(canAcked, sendCanTimer, SLOW_SEND_TO_CAN_CLOUD, rcvdHostFast); break;
+        case MSG_6_YES: ackReceived(anotherCanAcked, sendAnotherCanTimer, SLOW_SEND_TO_ANOTHER_CAN_CLOUD, rcvdHostFast); break;
 
         case MSG_8_OK:
         {
@@ -319,17 +312,6 @@ void HostNode::handleSlowMessageTransmissions(cMessage *msg){
             cXMLElement *movementLeg = root->getElementById("2");
             mobility->setLeg(movementLeg);
             FSM_Goto(*currentFsm, SLOW_SEND_TO_ANOTHER_CAN);
-            break;
-        }
-
-        case MSG_6_YES:
-        {
-            // Received confirmation from AnotherCan
-            rcvdHostFast++;
-            updateStatusText();
-            anotherCanAcked = true;
-            cancelEvent(sendAnotherCanTimer);
-            FSM_Goto(*currentFsm, SLOW_SEND_TO_ANOTHER_CAN_CLOUD);
             break;
         }
 
@@ -395,25 +377,8 @@ void HostNode::handleEmptyMessageTransmissions(cMessage *msg){
 
     int msgId = Node::getMsgId(msg);
     switch(msgId){
-        case MSG_2_NO:
-            {
-                rcvdHostFast++;
-                updateStatusText();
-                canAcked = true;
-                cancelEvent(sendCanTimer);
-                FSM_Goto(*currentFsm, EMPTY_SEND_TO_ANOTHER_CAN);
-                break;
-        }
-        case MSG_5_NO:
-            {
-                // Received confirmation from AnotherCan
-                rcvdHostFast++;
-                updateStatusText();
-                anotherCanAcked = true;
-                cancelEvent(sendAnotherCanTimer);
-                FSM_Goto(*currentFsm, EMPTY_EXIT);
-                break;
-         }
+        case MSG_2_NO: ackReceived(canAcked, sendCanTimer, EMPTY_SEND_TO_ANOTHER_CAN, rcvdHostFast); break;
+        case MSG_5_NO: ackReceived(anotherCanAcked, sendAnotherCanTimer, EMPTY_EXIT, rcvdHostFast); break;
     }
 }
 
@@ -465,25 +430,12 @@ void HostNode::updateRangeState(bool nowInRange, bool &prevInRange, cMessage *ti
     }
 }
 
-static double channelDelay(cGate *g) {
-    if (!g) return 0;
-    cChannel *ch = g->getChannel();
-    if (!ch) return 0;
-    if (auto realistic = dynamic_cast<RealisticDelayChannel*>(ch))
-        return SIMTIME_DBL(realistic->getCurrentDelay());  // uses your dynamic delay
-    return 0;
-}
-
-double HostNode::delayOn(const char* gateName, int ix) {
-    // host-only safe accessor
-    if (ix < 0 || ix >= gateSize(gateName)) return 0;
-    return channelDelay(gate(gateName, ix));
-}
-
-static double delayFrom(cModule *m, const char* gateName, int ix) {
-    if (!m) return 0;
-    cGate *g = m->gate(gateName, ix);
-    return channelDelay(g);
+void HostNode::ackReceived(bool &ackedFlag, cMessage *timer, int nextState, int &rcvdCounter){
+    rcvdCounter++;
+    updateStatusText();
+    ackedFlag = true;
+    cancelEvent(timer);
+    FSM_Goto(*currentFsm, nextState);
 }
 
 void HostNode::renderInitialDelayStats(){
@@ -551,18 +503,18 @@ void HostNode::finish() {
     // 2: host <-> cloud   (SlowLink)
 
     // Read delays safely
-    double host_to_can      = delayOn("gate$o", 0);
-    double host_to_another  = delayOn("gate$o", 1);
-    double host_to_cloud    = delayOn("gate$o", 2);
+    double host_to_can      = DelayUtils::delayFrom(canNode, "gate$o", 0);
+    double host_to_another  = DelayUtils::delayFrom(anotherCanNode, "gate$o", 1);
+    double host_to_cloud    = DelayUtils::delayFrom(cloudNode, "gate$o", 2);
 
     // Can/anotherCan to Cloud (from those modules)
     // can.numGates = 2; can.gate[1] <-> FastLink <-> cloud.gate[1]
     // anotherCan.numGates = 2; anotherCan.gate[1] <-> FastLink <-> cloud.gate[2]
-    double can_to_cloud         = delayFrom(canNode, "gate$o", 1);
-    double another_to_cloud     = delayFrom(anotherCanNode, "gate$o", 1);
-    double cloud_to_can         = delayFrom(cloudNode, "gate$o", 1);
-    double cloud_to_another     = delayFrom(cloudNode, "gate$o", 2);
-    double cloud_to_host_slow   = delayFrom(cloudNode, "gate$o", 0); // slow link back to host
+    double can_to_cloud         = DelayUtils::delayFrom(canNode, "gate$o", 1);
+    double another_to_cloud     = DelayUtils::delayFrom(anotherCanNode, "gate$o", 1);
+    double cloud_to_can         = DelayUtils::delayFrom(cloudNode, "gate$o", 1);
+    double cloud_to_another     = DelayUtils::delayFrom(cloudNode, "gate$o", 2);
+    double cloud_to_host_slow   = DelayUtils::delayFrom(cloudNode, "gate$o", 0); // slow link back to host
 
     // Convenience aggregates (when a single line should represent two fast links)
     auto max2 = [](double a, double b){ return (a>b)?a:b; };
