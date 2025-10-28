@@ -44,42 +44,50 @@ void CanNode::initialize(){
 
 void CanNode::handleMessage(cMessage *msg){
 
-    if(strcmp(msg->getName(), "8-Ok") == 0){
-        rcvdCanFast++;
-        updateStatusText();
-        emit(Node::garbageCollectedSignalFromCan, true);
-    }
+    int msgId = Node::getMsgId(msg);
 
-    if(strcmp(msg->getName(), "1-Is the can full?") == 0){
-
-        // Check if we should drop or process message
-        if(dropCount < dropLimit){
-            bubble("Lost message");
-            dropCount++;
-            numberOfLostCanMsgs++;
+    switch(msgId){
+        case MSG_8_OK:
+        {
+            rcvdCanFast++;
             updateStatusText();
+            emit(Node::garbageCollectedSignalFromCan, true);
+            break;
         }
-        else{
-            if(strcmp(configName, "GarbageInTheCansAndFast") == 0){
-                cMessage *cloudMsg = new cMessage("7-Collect garbage");
-                send(cloudMsg, "gate$o", 1);
-                sendCanFast++;
+        case MSG_1_IS_CAN_FULL:
+        {
+            // Check if we should drop or process message
+            if(dropCount < dropLimit){
+                bubble("Lost message");
+                dropCount++;
+                numberOfLostCanMsgs++;
                 updateStatusText();
+                break;
             }
 
-            cMessage *resp;
+            cMessage *resp = nullptr;
             if(strcmp(configName, "NoGarbageInTheCans") == 0){
-                resp = new cMessage("2-No");
+                resp = Node::createMessage(MSG_2_NO);
             }else{
-                resp = new cMessage("3-Yes");
+                resp = Node::createMessage(MSG_3_YES);
             }
+
             send(resp, "gate$o", 0);
             sendCanFast++;
             rcvdCanFast++;
             updateStatusText();
 
-        }
+            cMessage *cloudMsg = nullptr;
+            if(strcmp(configName, "GarbageInTheCansAndFast") == 0){
+                cloudMsg = new cMessage("7-Collect garbage");
+                send(cloudMsg, "gate$o", 1);
+                sendCanFast++;
+                updateStatusText();
+            }
 
+
+            break;
+        }
     }
 
     delete msg;
