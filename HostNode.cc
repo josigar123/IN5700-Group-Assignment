@@ -12,6 +12,12 @@
 #include "DelayUtils.h"
 #include <sstream>
 
+struct LinkDelays{
+    double host_to_can, host_to_another, host_to_cloud;
+    double can_to_cloud, another_to_cloud;
+    double cloud_to_host, cloud_to_can, cloud_to_another;
+};
+
 class HostNode : public Node, public cListener{
 
 protected:
@@ -112,7 +118,7 @@ protected:
     double delayOn(const char* gateName, int ix);
 
     void ackReceived(bool &ackedFlag, cMessage *timer, int nextState, int &rcvdCounter);
-
+    LinkDelays collectDelays();
 };
 
 Define_Module(HostNode);
@@ -492,72 +498,49 @@ void HostNode::renderInitialDelayStats(){
 }
 
 void HostNode::finish() {
-    std::ostringstream hostOut;
-    std::ostringstream canOut;
-    std::ostringstream anotherCanOut;
-    std::ostringstream cloudOut;
-
-    // Host gates (exactly 3 as per NED)
-    // 0: host <-> can     (FastLink)
-    // 1: host <-> anotherCan (FastLink)
-    // 2: host <-> cloud   (SlowLink)
-
-    // Read delays safely
-    double host_to_can      = DelayUtils::delayFrom(canNode, "gate$o", 0);
-    double host_to_another  = DelayUtils::delayFrom(anotherCanNode, "gate$o", 1);
-    double host_to_cloud    = DelayUtils::delayFrom(cloudNode, "gate$o", 2);
-
-    // Can/anotherCan to Cloud (from those modules)
-    // can.numGates = 2; can.gate[1] <-> FastLink <-> cloud.gate[1]
-    // anotherCan.numGates = 2; anotherCan.gate[1] <-> FastLink <-> cloud.gate[2]
-    double can_to_cloud         = DelayUtils::delayFrom(canNode, "gate$o", 1);
-    double another_to_cloud     = DelayUtils::delayFrom(anotherCanNode, "gate$o", 1);
-    double cloud_to_can         = DelayUtils::delayFrom(cloudNode, "gate$o", 1);
-    double cloud_to_another     = DelayUtils::delayFrom(cloudNode, "gate$o", 2);
-    double cloud_to_host_slow   = DelayUtils::delayFrom(cloudNode, "gate$o", 0); // slow link back to host
+    std::ostringstream hostOut, canOut, anotherCanOut, cloudOut;
+    LinkDelays d = collectDelays();
 
     // Convenience aggregates (when a single line should represent two fast links)
-    auto max2 = [](double a, double b){ return (a>b)?a:b; };
-    double host_fast_to_others   = max2(host_to_can, host_to_another);
-    double others_fast_to_host   = host_fast_to_others; // symmetric channel delay
-    double cloud_fast_to_others  = max2(cloud_to_can, cloud_to_another);
-    double others_fast_to_cloud  = max2(can_to_cloud, another_to_cloud);
+    auto max2 = [](double a, double b){ return (a > b) ? a : b; };
+    double host_fast_to_others   = max2(d.host_to_can, d.host_to_another);
+    double others_fast_to_host   = host_fast_to_others; // symmetric
+    double cloud_fast_to_others  = max2(d.cloud_to_can, d.cloud_to_another);
+    double others_fast_to_cloud  = max2(d.can_to_cloud, d.another_to_cloud);
 
-    switch(fsmType){
-        case SLOW:
-        {
-
+    switch (fsmType) {
+        case SLOW: {
             // Cloud-based: host uses slow link to cloud; cans talk fast to host/cloud as needed
-            hostOut << "Slow connection from the smartphone to others (time it takes) = " << host_to_cloud << "\n";
-            hostOut << "Slow connection from others to the smartphone (time it takes) = " << host_to_cloud << "\n";
+            hostOut << "Slow connection from the smartphone to others (time it takes) = " << d.host_to_cloud << "\n";
+            hostOut << "Slow connection from others to the smartphone (time it takes) = " << d.host_to_cloud << "\n";
             hostOut << "Fast connection from the smartphone to others (time it takes) = " << host_fast_to_others << "\n";
             hostOut << "Fast connection from others to the smartphone (time it takes) = " << others_fast_to_host << "\n";
 
-            canOut << "Connection from the can to others (time it takes) = " << can_to_cloud << "\n";
-            canOut << "Connection from others to the can (time it takes) = " << cloud_to_can << "\n\n";
+            canOut << "Connection from the can to others (time it takes) = " << d.can_to_cloud << "\n";
+            canOut << "Connection from others to the can (time it takes) = " << d.cloud_to_can << "\n\n";
 
-            anotherCanOut << "Connection from the anotherCan to others (time it takes) = " << another_to_cloud << "\n";
-            anotherCanOut << "Connection from others to the anotherCan (time it takes) = " << cloud_to_another << "\n";
+            anotherCanOut << "Connection from the anotherCan to others (time it takes) = " << d.another_to_cloud << "\n";
+            anotherCanOut << "Connection from others to the anotherCan (time it takes) = " << d.cloud_to_another << "\n";
 
-            cloudOut << "Slow connection from the Cloud to others (time it takes) = " << cloud_to_host_slow << "\n";
-            cloudOut << "Slow connection from others to the Cloud (time it takes) = " << host_to_cloud << "\n";
+            cloudOut << "Slow connection from the Cloud to others (time it takes) = " << d.cloud_to_host << "\n";
+            cloudOut << "Slow connection from others to the Cloud (time it takes) = " << d.host_to_cloud << "\n";
             cloudOut << "Fast connection from the Cloud to others (time it takes) = 0\n";
             cloudOut << "Fast connection from others to the Cloud (time it takes) = 0\n";
             break;
         }
-        case FAST:
-        {
+
+        case FAST: {
             // Fog-based: cans talk directly to cloud (fast); host slow link unused for results
             hostOut << "Slow connection from the smartphone to others (time it takes) = 0\n";
             hostOut << "Slow connection from others to the smartphone (time it takes) = 0\n";
             hostOut << "Fast connection from the smartphone to others (time it takes) = " << host_fast_to_others << "\n";
             hostOut << "Fast connection from others to the smartphone (time it takes) = " << others_fast_to_host << "\n";
 
-            canOut << "Connection from the can to others (time it takes) = " << can_to_cloud << "\n";
-            canOut << "Connection from others to the can (time it takes) = " << cloud_to_can << "\n";
+            canOut << "Connection from the can to others (time it takes) = " << d.can_to_cloud << "\n";
+            canOut << "Connection from others to the can (time it takes) = " << d.cloud_to_can << "\n";
 
-            anotherCanOut << "Connection from the anotherCan to others (time it takes) = " << another_to_cloud << "\n";
-            anotherCanOut << "Connection from others to the anotherCan (time it takes) = " << cloud_to_another << "\n";
+            anotherCanOut << "Connection from the anotherCan to others (time it takes) = " << d.another_to_cloud << "\n";
+            anotherCanOut << "Connection from others to the anotherCan (time it takes) = " << d.cloud_to_another << "\n";
 
             cloudOut << "Slow connection from the Cloud to others (time it takes) = 0\n";
             cloudOut << "Slow connection from others to the Cloud (time it takes) = 0\n";
@@ -565,19 +548,19 @@ void HostNode::finish() {
             cloudOut << "Fast connection from others to the Cloud (time it takes) = " << others_fast_to_cloud << "\n";
             break;
         }
-        case EMPTY:
-        {
+
+        case EMPTY: {
             // No-garbage: only query/reply between host and cans matters; cloud paths effectively 0
             hostOut << "Slow connection from the smartphone to others (time it takes) = 0\n";
             hostOut << "Slow connection from others to the smartphone (time it takes) = 0\n";
             hostOut << "Fast connection from the smartphone to others (time it takes) = " << host_fast_to_others << "\n";
             hostOut << "Fast connection from others to the smartphone (time it takes) = " << others_fast_to_host << "\n";
 
-            canOut << "Connection from the can to others (time it takes) = " << can_to_cloud << "\n";
-            canOut << "Connection from others to the can (time it takes) = " << cloud_to_can << "\n";
+            canOut << "Connection from the can to others (time it takes) = " << d.can_to_cloud << "\n";
+            canOut << "Connection from others to the can (time it takes) = " << d.cloud_to_can << "\n";
 
-            anotherCanOut << "Connection from the anotherCan to others (time it takes) = " << another_to_cloud << "\n";
-            anotherCanOut << "Connection from others to the anotherCan (time it takes) = " << cloud_to_another << "\n";
+            anotherCanOut << "Connection from the anotherCan to others (time it takes) = " << d.another_to_cloud << "\n";
+            anotherCanOut << "Connection from others to the anotherCan (time it takes) = " << d.cloud_to_another << "\n";
 
             cloudOut << "Slow connection from the Cloud to others (time it takes) = 0\n";
             cloudOut << "Slow connection from others to the Cloud (time it takes) = 0\n";
@@ -592,6 +575,26 @@ void HostNode::finish() {
     anotherCanDelayStats->setText(anotherCanOut.str().c_str());
     cloudDelayStats->setText(cloudOut.str().c_str());
 }
+LinkDelays HostNode::collectDelays() {
+    LinkDelays d;
 
+    // Host gates (exactly 3 as per NED)
+    // 0: host <-> can          (FastLink)
+    // 1: host <-> anotherCan   (FastLink)
+    // 2: host <-> cloud        (SlowLink)
+    d.host_to_can      = DelayUtils::channelDelay(gate("gate$o", 0));
+    d.host_to_another  = DelayUtils::channelDelay(gate("gate$o", 1));
+    d.host_to_cloud    = DelayUtils::channelDelay(gate("gate$o", 2));
 
+    // Can/anotherCan to cloud
+    d.can_to_cloud         = DelayUtils::delayFrom(canNode, "gate$o", 1);
+    d.another_to_cloud     = DelayUtils::delayFrom(anotherCanNode, "gate$o", 1);
+
+    // Cloud return paths
+    d.cloud_to_host   = DelayUtils::delayFrom(cloudNode, "gate$o", 0);
+    d.cloud_to_can    = DelayUtils::delayFrom(cloudNode, "gate$o", 1);
+    d.cloud_to_another= DelayUtils::delayFrom(cloudNode, "gate$o", 2);
+
+    return d;
+}
 
