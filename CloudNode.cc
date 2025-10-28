@@ -10,11 +10,13 @@
 class CloudNode : public Node {
 
 protected:
+    // MSg stats variables
     int sentCloudFast = 0;
     int rcvdCloudFast = 0;
     int sentCloudSlow = 0;
     int rcvdCloudSlow = 0;
 
+    // TExt for displaying stats
     cTextFigure *statusText = nullptr;
 
 protected:
@@ -31,56 +33,69 @@ void CloudNode::initialize(){
 
     // ### SETUP STATUS TEXT ONLY IF THERE IS GARBAGE IN THE CANS ###
     if(strcmp(configName, "NoGarbageInTheCans") != 0){
-    statusText = new cTextFigure("cloudStatus");
-    statusText->setColor(cFigure::BLUE);
-    statusText->setFont(cFigure::Font("Arial", 36));
-    updateStatusText();
+        statusText = new cTextFigure("cloudStatus");
+        statusText->setColor(cFigure::BLUE);
+        statusText->setFont(cFigure::Font("Arial", 36));
+        updateStatusText();
 
-    statusText->setPosition(cFigure::Point(x - 500, y - 130)); // Above the node
+        statusText->setPosition(cFigure::Point(x - 500, y - 130)); // Above the node
 
-    canvas->addFigure(statusText);
+        canvas->addFigure(statusText);
     }
 }
 
 void CloudNode::handleMessage(cMessage *msg){
-    if(strcmp(msg->getName(), "7-Collect garbage") == 0){
-        cMessage *resp = new cMessage("8-Ok");
 
-        if(strcmp(configName, "GarbageInTheCansAndFast") == 0){
-            send(resp, "gate$o", 1);
-            sentCloudFast++;
-            rcvdCloudFast++;
-            updateStatusText();
-        }
-        else{
-            if(statusText != nullptr){
-                sentCloudSlow++;
-                rcvdCloudSlow++;
+    int msgId = Node::getMsgId(msg);
+
+    switch(msgId){
+
+        case MSG_7_COLLECT_GARBAGE:
+        {
+            cMessage *resp = Node::createMessage(MSG_8_OK);
+
+            if(strcmp(configName, "GarbageInTheCansAndFast") == 0){
+                send(resp, "gate$o", 1);
+                sentCloudFast++;
+                rcvdCloudFast++;
                 updateStatusText();
             }
-            send(resp, "gate$o", 0);
-        }
-    }
+            else{
 
-    if(strcmp(msg->getName(), "9-Collect garbage") == 0){
-        cMessage *resp = new cMessage("10-Ok");
-
-        if(strcmp(configName, "GarbageInTheCansAndFast") == 0){
-            send(resp, "gate$o", 2);
-            sentCloudFast++;
-            rcvdCloudFast++;
-            updateStatusText();
-        }
-        else{
-            if(statusText != nullptr){
-                sentCloudSlow++;
-                rcvdCloudSlow++;
-                updateStatusText();
+                // Need to check if we need to update the text or not for Slow Config, or not at all for empty
+                if(statusText != nullptr){
+                    sentCloudSlow++;
+                    rcvdCloudSlow++;
+                    updateStatusText();
+                }
+                send(resp, "gate$o", 0);
             }
 
-            send(resp, "gate$o", 0);
+            break;
         }
 
+        case MSG_9_COLLECT_GARBAGE:
+        {
+            cMessage *resp = Node::createMessage(MSG_10_OK);
+
+            if(strcmp(configName, "GarbageInTheCansAndFast") == 0){
+                send(resp, "gate$o", 2);
+                sentCloudFast++;
+                rcvdCloudFast++;
+                updateStatusText();
+            }
+            else{
+                if(statusText != nullptr){
+                    sentCloudSlow++;
+                    rcvdCloudSlow++;
+                    updateStatusText();
+                }
+
+                send(resp, "gate$o", 0);
+            }
+
+            break;
+        }
     }
 
     delete msg;

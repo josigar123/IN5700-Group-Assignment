@@ -44,43 +44,53 @@ void AnotherCanNode::initialize(){
 
 void AnotherCanNode::handleMessage(cMessage *msg){
 
-    if(strcmp(msg->getName(), "10-Ok") == 0){
-        rcvdAnotherCanFast++;
-        updateStatusText();
-        emit(Node::garbageCollectedSignalFromAnotherCan, true);
-    }
+    int msgId = Node::getMsgId(msg);
 
-    if(strcmp(msg->getName(), "4-Is the can full?") == 0){
-
-        if(dropCount < dropLimit){
-            bubble("Lost message");
-            dropCount++;
-            numberOfLostAnotherCanMsgs++;
+    switch(msgId){
+        case MSG_10_OK:
+        {
+            rcvdAnotherCanFast++;
             updateStatusText();
-        }else{
+            emit(Node::garbageCollectedSignalFromAnotherCan, true);
+            break;
+        }
+        case MSG_4_IS_CAN_FULL:
+        {
 
-            if(strcmp(configName, "GarbageInTheCansAndFast") == 0){
-                cMessage *cloudMsg = new cMessage("9-Collect garbage");
-                send(cloudMsg, "gate$o", 1);
-                sendAnotherCanFast++;
+            if(dropCount < dropLimit){
+                bubble("Lost message");
+                dropCount++;
+                numberOfLostAnotherCanMsgs++;
                 updateStatusText();
+                break; // Break early to reduce nesting by one level
             }
 
             cMessage *resp;
             if(strcmp(configName, "NoGarbageInTheCans") == 0){
-                resp = new cMessage("5-No");
+                resp = Node::createMessage(MSG_5_NO);
             }else{
-                resp =new cMessage("6-Yes");
+                resp = Node::createMessage(MSG_6_YES);
             }
 
             send(resp, "gate$o", 0);
             sendAnotherCanFast++;
             rcvdAnotherCanFast++;
             updateStatusText();
+
+            if(strcmp(configName, "GarbageInTheCansAndFast") == 0){
+                cMessage *cloudMsg = Node::createMessage(MSG_9_COLLECT_GARBAGE);
+                send(cloudMsg, "gate$o", 1);
+                sendAnotherCanFast++;
+                updateStatusText();
+            }
+
+            break;
         }
     }
+
     delete msg;
 }
+
 
 void AnotherCanNode::updateStatusText() {
     char buf[200];

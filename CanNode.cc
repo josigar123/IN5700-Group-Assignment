@@ -79,7 +79,7 @@ void CanNode::handleMessage(cMessage *msg){
 
             cMessage *cloudMsg = nullptr;
             if(strcmp(configName, "GarbageInTheCansAndFast") == 0){
-                cloudMsg = new cMessage("7-Collect garbage");
+                cloudMsg = Node::createMessage(MSG_7_COLLECT_GARBAGE);
                 send(cloudMsg, "gate$o", 1);
                 sendCanFast++;
                 updateStatusText();
