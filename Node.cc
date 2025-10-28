@@ -47,12 +47,6 @@ void Node::initialize()
     EV << "Node " << getName() << " at (" << x << "," << y << ") with range " << range << "\n";
 }
 
-
-void Node::handleMessage(cMessage *msg)
-{
-    delete msg;
-}
-
 void Node::renderCoverageCircle(double x, double y){
     oval->setBounds(cFigure::Rectangle(x - range, y - range, range * 2, range * 2));
     oval->setLineColor(cFigure::BLACK);
@@ -61,3 +55,26 @@ void Node::renderCoverageCircle(double x, double y){
 }
 
 
+cMessage *Node::createMessage(MsgID id){
+    static const char *names[] = {
+        "",                       // 0 unused
+        "1-Is the can full?",
+        "2-NO",
+        "3-YES",
+        "4-Is the can full?",
+        "5-NO",
+        "6-YES",
+        "7-Collect garbage",
+        "8-OK",
+        "9-Collect garbage",
+        "10-OK"
+    };
+
+    cMessage *msg = new cMessage(names[id]);
+    msg->addPar("msgId") = static_cast<int>(id);
+    return msg;
+}
+
+int Node::getMsgId(cMessage *msg){
+    return (int)(msg->hasPar("msgId") ? msg->par("msgId") : 0);
+}
