@@ -90,17 +90,22 @@ module HostNode extends Node
 
 network GarbageCollectionSystem
 {
+    
+   	parameters:
+   	   int numHosts = 1;
+   	        	
     @display("bgb=3000,1250");
 
     @figure[outerroad](type=polyline; points=1700,200,150,200,150,1100,1700,1100; lineColor=black; lineWidth=4);
     @figure[innerroad](type=polyline; points=1700,450,400,450,400,850,1700,850; lineColor=black; lineWidth=4);
 	
+
 	
     submodules:
         visualizer: IntegratedCanvasVisualizer{
         	@display("p=1500,50");
         }
-        host: HostNode {
+        host[numHosts]: HostNode {
             x = 1750;
             y = 300;
             range = 275;
@@ -127,9 +132,9 @@ network GarbageCollectionSystem
         }
 	
     connections:
-        host.gate[0] <--> FastLink <--> can.gate[0];
-        host.gate[1] <-->  FastLink <--> anotherCan.gate[0];
-        host.gate[2] <--> SlowLink <--> cloud.gate[0];
+        host[0].gate[0] <--> FastLink <--> can.gate[0];
+        host[0].gate[1] <-->  FastLink <--> anotherCan.gate[0];
+        host[0].gate[2] <--> SlowLink <--> cloud.gate[0];
 
         can.gate[1] <--> FastLink <--> cloud.gate[1];
         anotherCan.gate[1] <--> FastLink <--> cloud.gate[2];
