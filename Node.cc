@@ -44,7 +44,20 @@ void Node::initialize()
     // Create coverage circle
     renderCoverageCircle(x, y);
 
-    EV << "Node " << getName() << " at (" << x << "," << y << ") with range " << range << "\n";
+    // Populate gate pointers for runtime calculations
+    if (hasGate("gate$o", 0))
+            fastCellularLink = gate("gate$o", 0)->getChannel();
+
+        if (hasGate("gate$o", 1))
+            fastWiFiLink = gate("gate$o", 1)->getChannel();  // for CanNodes/AnotherCanNodes
+        // HostNode has SlowCellularLink at index 2
+        if (hasGate("gate$o", 2))
+            slowCellularLink = gate("gate$o", 2)->getChannel();
+
+    EV << "Node " << getName() << " has channels: "
+       << (slowCellularLink ? "slowCell " : "")
+       << (fastCellularLink ? "fastCell " : "")
+       << (fastWiFiLink ? "wifi " : "") << "\n";
 }
 
 void Node::renderCoverageCircle(double x, double y){
@@ -76,5 +89,5 @@ cMessage *Node::createMessage(MsgID id){
 }
 
 int Node::getMsgId(cMessage *msg){
-    return (int)(msg->hasPar("msgId") ? msg->par("msgId") : 0);
+    return (int)(msg->hasPar("msgId") ? msg->par("msgId") : 0); // Fallback to 0 for invalid message type
 }

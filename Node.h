@@ -34,10 +34,14 @@ class Node : public cSimpleModule
 {
 
 protected:
-    cModule *network = nullptr;
-    cOvalFigure *oval = nullptr;
-    cCanvas *canvas = nullptr;
-    const char *configName = nullptr;
+    cModule *network =           nullptr;
+    cOvalFigure *oval =          nullptr;
+    cCanvas *canvas =            nullptr;
+    const char *configName =     nullptr;
+
+    cChannel *slowCellularLink = nullptr;
+    cChannel *fastCellularLink = nullptr;
+    cChannel *fastWiFiLink =     nullptr;
 
     double x;
     double y;
