@@ -250,6 +250,10 @@ void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, cObject *
                 if (statusText) {
                     statusText->setPosition(cFigure::Point(pos.x - 500, pos.y - 100));
                 }
+
+                // Update coords for module
+                x = pos.x;
+                y = pos.y;
             }
 
             bool nowInRangeCan = isInRangeOf(canNode);
