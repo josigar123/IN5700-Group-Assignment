@@ -20,6 +20,8 @@ channel RealisticDelayChannel extends ned.DatarateChannel
 {
     parameters:
         double baseLatency @unit(ms) = default(0ms);  // Base extra latency (time), fixed one-way delay
+        double jitterPercentage = default(0.10); // Delay jitter% for link of baseLatency
+        double propSpeed @unit(mps) = default(3e8mps); // Speed of light in air
         @class(RealisticDelayChannel);              // Link to C++ channel class
 }
 
@@ -29,6 +31,8 @@ channel SlowCellularLink extends RealisticDelayChannel {
     parameters:
         datarate = 50Mbps;
         baseLatency = 85ms;
+        jitterPercentage = 0.20; // +-20%
+        propSpeed = 3e8mps;
     
     @display("ls=red");
 }
@@ -38,6 +42,8 @@ channel FastCellularLink extends RealisticDelayChannel {
     parameters:
         datarate = 100Mbps;
         baseLatency = 10ms;
+        jitterPercentage = 0.08; // +-8%
+        propSpeed = 3e8mps;
         
     @display("ls=green");
 }
@@ -47,6 +53,8 @@ channel FastWiFiLink extends RealisticDelayChannel{
     parameters:
         datarate = 200Mbps;
         baseLatency = 20ms;
+        jitterPercentage = 0.08; // +-8%
+        propSpeed = 3e8mps;
         
     @display("ls=blue");
 }
