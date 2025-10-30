@@ -33,6 +33,10 @@ enum MsgID {
 class Node : public cSimpleModule
 {
 
+public:
+    double x;
+    double y;
+
 protected:
     cModule *network =           nullptr;
     cOvalFigure *oval =          nullptr;
@@ -43,8 +47,6 @@ protected:
     cChannel *fastCellularLink = nullptr;
     cChannel *fastWiFiLink =     nullptr;
 
-    double x;
-    double y;
     double range = 0;
 
 protected:
