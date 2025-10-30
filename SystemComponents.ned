@@ -19,22 +19,37 @@ import inet.visualizer.canvas.integrated.IntegratedCanvasVisualizer;
 channel RealisticDelayChannel extends ned.DatarateChannel
 {
     parameters:
-        double baseLatency @unit(ms) = default(0ms);  // Base extra latency (time):contentReference[oaicite:2]{index=2}
+        double baseLatency @unit(ms) = default(0ms);  // Base extra latency (time), fixed one-way delay
         @class(RealisticDelayChannel);              // Link to C++ channel class
 }
 
-channel SlowLink extends RealisticDelayChannel {
+// This is the slow cellular link between the host and cloud, we assume public 5G which will go through the operator core
+// to the cloud
+channel SlowCellularLink extends RealisticDelayChannel {
     parameters:
-        datarate = 1Mbps;
-        baseLatency = 2000ms;  // e.g. higher base latency for a "slow" cellular link
+        datarate = 50Mbps;
+        baseLatency = 85ms;
+    
+    @display("ls=red");
 }
 
-channel FastLink extends RealisticDelayChannel {
+// This is the fast cellular link between a fog node (can) and host, we assume private 5G (MEC) for processing at the edge
+channel FastCellularLink extends RealisticDelayChannel {
     parameters:
-        datarate = 1Mbps;
-        baseLatency = 2000ms;   // e.g. lower base latency for a "fast" WiFi link
+        datarate = 100Mbps;
+        baseLatency = 10ms;
+        
+    @display("ls=green");
 }
 
+// This is the fast Wi-Fi link between a fog node (can) and the cloud, assume an enterprise Wi-Fi 6 access point
+channel FastWiFiLink extends RealisticDelayChannel{
+    parameters:
+        datarate = 200Mbps;
+        baseLatency = 20ms;
+        
+    @display("ls=blue");
+}
 
 simple TurtleMobility extends inet.mobility.single.TurtleMobility{
 	@class(Extended::TurtleMobility);
@@ -132,11 +147,11 @@ network GarbageCollectionSystem
         }
 	
     connections:
-        host[0].gate[0] <--> FastLink <--> can.gate[0];
-        host[0].gate[1] <-->  FastLink <--> anotherCan.gate[0];
-        host[0].gate[2] <--> SlowLink <--> cloud.gate[0];
+        host[0].gate[0] <--> FastCellularLink <--> can.gate[0];
+        host[0].gate[1] <-->  FastCellularLink <--> anotherCan.gate[0];
+        host[0].gate[2] <--> SlowCellularLink <--> cloud.gate[0];
 
-        can.gate[1] <--> FastLink <--> cloud.gate[1];
-        anotherCan.gate[1] <--> FastLink <--> cloud.gate[2];
+        can.gate[1] <--> FastWiFiLink <--> cloud.gate[1];
+        anotherCan.gate[1] <--> FastWiFiLink <--> cloud.gate[2];
 }
 
