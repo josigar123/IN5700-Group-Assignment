@@ -203,6 +203,7 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
 
             simtime_t delay = system->slowCellularLink->computeDynamicDelay(this, system->cloudNode);
             GlobalDelays.slow_smartphone_to_others += delay.dbl();
+            GlobalDelays.slow_others_to_cloud += delay.dbl();
 
             send(req, "gate$o", 2);
             sendHostSlow++;
@@ -215,6 +216,7 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
 
             simtime_t delay = system->slowCellularLink->computeDynamicDelay(this, system->cloudNode);
             GlobalDelays.slow_smartphone_to_others += delay.dbl();
+            GlobalDelays.slow_others_to_cloud += delay.dbl();
 
             send(req, "gate$o", 2);
             sendHostSlow++;
@@ -331,6 +333,8 @@ void HostNode::handleSendTimer(cMessage *msg,
         Node *nodeToCalculateDelayFor = gateIndex == 0 ? system->canNode : system->anotherCanNode;
         simtime_t delay = system->fastCellularLink->computeDynamicDelay(this, nodeToCalculateDelayFor);
         GlobalDelays.fast_smartphone_to_others += delay.dbl();
+        GlobalDelays.connection_from_others_to_can += delay.dbl();
+        GlobalDelays.connection_from_others_to_another_can += delay.dbl();
 
         send(req, "gate$o", gateIndex);
         sendHostFast++;

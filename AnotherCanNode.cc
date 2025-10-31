@@ -70,10 +70,11 @@ void AnotherCanNode::handleMessage(cMessage *msg){
                 resp = system->createMessage(MSG_5_NO);
             }else{
                 resp = system->createMessage(MSG_6_YES);
-
-                simtime_t delay = system->fastCellularLink->computeDynamicDelay(this, system->hostNode);
-                GlobalDelays.fast_others_to_smartphone += delay.dbl();
             }
+
+            simtime_t delay = system->fastCellularLink->computeDynamicDelay(this, system->hostNode);
+            GlobalDelays.fast_others_to_smartphone += delay.dbl();
+            GlobalDelays.connection_from_another_can_to_others += delay.dbl();
 
             send(resp, "gate$o", 0);
             sendAnotherCanFast++;

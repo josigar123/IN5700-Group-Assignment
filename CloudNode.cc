@@ -70,6 +70,7 @@ void CloudNode::handleMessage(cMessage *msg){
 
                     simtime_t delay = system->slowCellularLink->computeDynamicDelay(this, system->hostNode);
                     GlobalDelays.slow_others_to_smartphone += delay.dbl();
+                    GlobalDelays.slow_cloud_to_others += delay.dbl();
                 }
                 send(resp, "gate$o", 0);
             }
@@ -95,6 +96,7 @@ void CloudNode::handleMessage(cMessage *msg){
 
                     simtime_t delay = system->slowCellularLink->computeDynamicDelay(this, system->hostNode);
                     GlobalDelays.slow_others_to_smartphone += delay.dbl();
+                    GlobalDelays.slow_cloud_to_others += delay.dbl();
                 }
 
                 send(resp, "gate$o", 0);
