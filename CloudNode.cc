@@ -32,7 +32,7 @@ void CloudNode::initialize(){
     Node::initialize();
 
     // ### SETUP STATUS TEXT ONLY IF THERE IS GARBAGE IN THE CANS ###
-    if(strcmp(configName, "NoGarbageInTheCans") != 0){
+    if(strcmp(system->configName, "NoGarbageInTheCans") != 0){
         statusText = new cTextFigure("cloudStatus");
         statusText->setColor(cFigure::BLUE);
         statusText->setFont(cFigure::Font("Arial", 36));
@@ -40,21 +40,21 @@ void CloudNode::initialize(){
 
         statusText->setPosition(cFigure::Point(x - 500, y - 130)); // Above the node
 
-        canvas->addFigure(statusText);
+        system->canvas->addFigure(statusText);
     }
 }
 
 void CloudNode::handleMessage(cMessage *msg){
 
-    int msgId = Node::getMsgId(msg);
+    int msgId = system->getMsgId(msg);
 
     switch(msgId){
 
         case MSG_7_COLLECT_GARBAGE:
         {
-            cMessage *resp = Node::createMessage(MSG_8_OK);
+            cMessage *resp = system->createMessage(MSG_8_OK);
 
-            if(strcmp(configName, "GarbageInTheCansAndFast") == 0){
+            if(strcmp(system->configName, "GarbageInTheCansAndFast") == 0){
                 send(resp, "gate$o", 1);
                 sentCloudFast++;
                 rcvdCloudFast++;
@@ -76,9 +76,9 @@ void CloudNode::handleMessage(cMessage *msg){
 
         case MSG_9_COLLECT_GARBAGE:
         {
-            cMessage *resp = Node::createMessage(MSG_10_OK);
+            cMessage *resp = system->createMessage(MSG_10_OK);
 
-            if(strcmp(configName, "GarbageInTheCansAndFast") == 0){
+            if(strcmp(system->configName, "GarbageInTheCansAndFast") == 0){
                 send(resp, "gate$o", 2);
                 sentCloudFast++;
                 rcvdCloudFast++;

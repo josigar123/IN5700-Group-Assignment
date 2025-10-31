@@ -39,12 +39,12 @@ void CanNode::initialize(){
 
     statusText->setPosition(cFigure::Point(x - 500, y - 100)); // Above the node
 
-    canvas->addFigure(statusText);
+    system->canvas->addFigure(statusText);
 }
 
 void CanNode::handleMessage(cMessage *msg){
 
-    int msgId = Node::getMsgId(msg);
+    int msgId = system->getMsgId(msg);
 
     switch(msgId){
         case MSG_8_OK:
@@ -66,10 +66,10 @@ void CanNode::handleMessage(cMessage *msg){
             }
 
             cMessage *resp = nullptr;
-            if(strcmp(configName, "NoGarbageInTheCans") == 0){
-                resp = Node::createMessage(MSG_2_NO);
+            if(strcmp(system->configName, "NoGarbageInTheCans") == 0){
+                resp = system->createMessage(MSG_2_NO);
             }else{
-                resp = Node::createMessage(MSG_3_YES);
+                resp = system->createMessage(MSG_3_YES);
             }
 
             send(resp, "gate$o", 0);
@@ -78,13 +78,12 @@ void CanNode::handleMessage(cMessage *msg){
             updateStatusText();
 
             cMessage *cloudMsg = nullptr;
-            if(strcmp(configName, "GarbageInTheCansAndFast") == 0){
-                cloudMsg = Node::createMessage(MSG_7_COLLECT_GARBAGE);
+            if(strcmp(system->configName, "GarbageInTheCansAndFast") == 0){
+                cloudMsg = system->createMessage(MSG_7_COLLECT_GARBAGE);
                 send(cloudMsg, "gate$o", 1);
                 sendCanFast++;
                 updateStatusText();
             }
-
 
             break;
         }

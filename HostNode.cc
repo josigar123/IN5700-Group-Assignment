@@ -8,20 +8,12 @@
 #include "Node.h"
 #include "DelayUtils.h"
 #include "inet/mobility/base/MobilityBase.h"
-#include "RealisticDelayChannel.h"
 #include "DelayUtils.h"
 #include <sstream>
 
 class HostNode : public Node, public cListener{
 
 protected:
-
-    // Text figures for holding the delay statistics to be displayed at the end
-    cTextFigure *delayStatsHeader = nullptr;
-    cTextFigure *hostDelayStats = nullptr;
-    cTextFigure *canDelayStats = nullptr;
-    cTextFigure *anotherCanDelayStats = nullptr;
-    cTextFigure *cloudDelayStats = nullptr;
 
     // Variables for start-stop logic
     Coord waypointCan = Coord(290, 300); // Waypoint found by visual analysis
@@ -53,7 +45,6 @@ protected:
 protected:
     virtual void initialize() override;
     virtual void handleMessage(cMessage *msg) override;
-    virtual void finish() override;
     virtual void receiveSignal(cComponent *source, simsignal_t signalID, bool value, cObject *details) override;
     virtual void receiveSignal(cComponent *source, simsignal_t signalID, cObject *obj, cObject *details) override;
 
@@ -69,11 +60,6 @@ protected:
     void updateRangeState(bool nowInRange, bool &prevInRange, cMessage *timer, const char *name);
 
     void updateStatusText();
-    void renderInitialDelayStats();
-
-    double getDelayFromChannel(const char* gateName, int index);
-    double delayOn(const char* gateName, int ix);
-
     void ackReceived(bool &ackedFlag, cMessage *timer, int nextState, int &rcvdCounter);
 };
 
@@ -89,13 +75,12 @@ void HostNode::initialize(){
     mobility->subscribe(inet::MobilityBase::mobilityStateChangedSignal, this);
 
     // Subscribe to collection signals
-    canNode->subscribe(Node::garbageCollectedSignalFromCan, this);
-    anotherCanNode->subscribe(Node::garbageCollectedSignalFromAnotherCan, this);
+    system->canNode->subscribe(Node::garbageCollectedSignalFromCan, this);
+    system->anotherCanNode->subscribe(Node::garbageCollectedSignalFromAnotherCan, this);
 
     // Create self messages for retries while waiting for ACK from cans
     sendCanTimer = new cMessage("sendCanTimer");
     sendAnotherCanTimer = new cMessage("sendAnotherCanTimer");
-
 
 
     // ### SETUP STATUS TEXT ###
@@ -110,28 +95,25 @@ void HostNode::initialize(){
         statusText->setPosition(cFigure::Point(pos.x - 500, pos.y - 100)); // Above the node
     }
 
-    canvas->addFigure(statusText);
-
-    // Renders status info based on config
-    renderInitialDelayStats();
+    system->canvas->addFigure(statusText);
 }
 
 void HostNode::handleMessage(cMessage *msg){
 
     if (msg == sendCanTimer) {
-        handleSendTimer(msg, inRangeOfCan, canAcked, atWaypointCan, "Can", 0, FAST_SEND_TO_CAN, SLOW_SEND_TO_CAN);
+        handleSendTimer(msg, inRangeOfCan, canAcked, atWaypointCan, "Can", 0, GarbageCollectionSystem::FAST_SEND_TO_CAN, GarbageCollectionSystem::SLOW_SEND_TO_CAN);
         return;
     }
 
     if (msg == sendAnotherCanTimer) {
-        handleSendTimer(msg, inRangeOfAnotherCan, anotherCanAcked, atWaypointAnotherCan, "AnotherCan", 1, FAST_SEND_TO_ANOTHER_CAN, SLOW_SEND_TO_ANOTHER_CAN);
+        handleSendTimer(msg, inRangeOfAnotherCan, anotherCanAcked, atWaypointAnotherCan, "AnotherCan", 1, GarbageCollectionSystem::FAST_SEND_TO_ANOTHER_CAN, GarbageCollectionSystem::SLOW_SEND_TO_ANOTHER_CAN);
         return;
     }
 
-    switch(fsmType){
-        case FAST: handleFastMessageTransmissions(msg); break;
-        case SLOW: handleSlowMessageTransmissions(msg); handleSlowFsmTransitions(msg); break;
-        case EMPTY: handleEmptyMessageTransmissions(msg); handleEmptyFsmTransitions(msg); break;
+    switch(system->fsmType){
+        case GarbageCollectionSystem::FAST: handleFastMessageTransmissions(msg); break;
+        case GarbageCollectionSystem::SLOW: handleSlowMessageTransmissions(msg); handleSlowFsmTransitions(msg); break;
+        case GarbageCollectionSystem::EMPTY: handleEmptyMessageTransmissions(msg); handleEmptyFsmTransitions(msg); break;
     }
 
     delete msg;
@@ -187,8 +169,8 @@ void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, cObject *
                 y = pos.y;
             }
 
-            bool nowInRangeCan = isInRangeOf(canNode);
-            bool nowInRangeAnotherCan = isInRangeOf(anotherCanNode);
+            bool nowInRangeCan = isInRangeOf(system->canNode);
+            bool nowInRangeAnotherCan = isInRangeOf(system->anotherCanNode);
 
             // Check that host is at waypoint with some margin
             atWaypointCan = mobility->getCurrentPosition().distance(waypointCan) <= 1 ? true : false;
@@ -206,29 +188,29 @@ void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, bool valu
     if(signalID == Node::garbageCollectedSignalFromCan){
             cXMLElement *movementLeg = root->getElementById("2");
             mobility->setLeg(movementLeg);
-            FSM_Goto(*currentFsm, FAST_SEND_TO_ANOTHER_CAN);
+            FSM_Goto(*system->currentFsm, system->FAST_SEND_TO_ANOTHER_CAN);
         }
 
     if(signalID == Node::garbageCollectedSignalFromAnotherCan){
         cXMLElement *movementLeg = root->getElementById("3");
         mobility->setLeg(movementLeg);
-        FSM_Goto(*currentFsm, FAST_EXIT);
+        FSM_Goto(*system->currentFsm, system->FAST_EXIT);
     }
 }
 
 void HostNode::handleSlowFsmTransitions(cMessage *msg){
-    FSM_Switch(*currentFsm){
-        case FSM_Enter(SLOW_SEND_TO_CAN_CLOUD):
+    FSM_Switch(*system->currentFsm){
+        case FSM_Enter(GarbageCollectionSystem::SLOW_SEND_TO_CAN_CLOUD):
         {
-            cMessage *req = Node::createMessage(MSG_7_COLLECT_GARBAGE);
+            cMessage *req = system->createMessage(MSG_7_COLLECT_GARBAGE);
             send(req, "gate$o", 2);
             sendHostSlow++;
             updateStatusText();
             break;
         }
-        case FSM_Enter(SLOW_SEND_TO_ANOTHER_CAN_CLOUD):
+        case FSM_Enter(GarbageCollectionSystem::SLOW_SEND_TO_ANOTHER_CAN_CLOUD):
         {
-            cMessage *req = Node::createMessage(MSG_9_COLLECT_GARBAGE);
+            cMessage *req = system->createMessage(MSG_9_COLLECT_GARBAGE);
             send(req, "gate$o", 2);
             sendHostSlow++;
             updateStatusText();
@@ -239,11 +221,11 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
 
 void HostNode::handleSlowMessageTransmissions(cMessage *msg){
 
-    int msgId = Node::getMsgId(msg);
+    int msgId = system->getMsgId(msg);
 
     switch(msgId){
-        case MSG_3_YES: ackReceived(canAcked, sendCanTimer, SLOW_SEND_TO_CAN_CLOUD, rcvdHostFast); break;
-        case MSG_6_YES: ackReceived(anotherCanAcked, sendAnotherCanTimer, SLOW_SEND_TO_ANOTHER_CAN_CLOUD, rcvdHostFast); break;
+        case MSG_3_YES: ackReceived(canAcked, sendCanTimer, system->SLOW_SEND_TO_CAN_CLOUD, rcvdHostFast); break;
+        case MSG_6_YES: ackReceived(anotherCanAcked, sendAnotherCanTimer, system->SLOW_SEND_TO_ANOTHER_CAN_CLOUD, rcvdHostFast); break;
 
         case MSG_8_OK:
         {
@@ -252,7 +234,7 @@ void HostNode::handleSlowMessageTransmissions(cMessage *msg){
             updateStatusText();
             cXMLElement *movementLeg = root->getElementById("2");
             mobility->setLeg(movementLeg);
-            FSM_Goto(*currentFsm, SLOW_SEND_TO_ANOTHER_CAN);
+            FSM_Goto(*system->currentFsm, GarbageCollectionSystem::SLOW_SEND_TO_ANOTHER_CAN);
             break;
         }
 
@@ -261,7 +243,7 @@ void HostNode::handleSlowMessageTransmissions(cMessage *msg){
             // Received confirmation from cloud
             rcvdHostSlow++;
             updateStatusText();
-            FSM_Goto(*currentFsm, SLOW_EXIT);
+            FSM_Goto(*system->currentFsm, GarbageCollectionSystem::SLOW_EXIT);
             cXMLElement *movementLeg = root->getElementById("3");
             mobility->setLeg(movementLeg);
             break;
@@ -273,7 +255,7 @@ void HostNode::handleSlowMessageTransmissions(cMessage *msg){
 
 void HostNode::handleFastMessageTransmissions(cMessage *msg){
 
-    int msgId = Node::getMsgId(msg);
+    int msgId = system->getMsgId(msg);
 
     switch(msgId){
     case MSG_3_YES:
@@ -298,14 +280,14 @@ void HostNode::handleFastMessageTransmissions(cMessage *msg){
 }
 
 void HostNode::handleEmptyFsmTransitions(cMessage *msg){
-    FSM_Switch(*currentFsm){
-        case FSM_Enter(EMPTY_SEND_TO_ANOTHER_CAN):
+    FSM_Switch(*system->currentFsm){
+        case FSM_Enter(GarbageCollectionSystem::EMPTY_SEND_TO_ANOTHER_CAN):
         {
            cXMLElement *movementLeg = root->getElementById("2");
            mobility->setLeg(movementLeg);
            break;
         }
-        case FSM_Enter(EMPTY_EXIT):
+        case FSM_Enter(GarbageCollectionSystem::EMPTY_EXIT):
         {
             cXMLElement *movementLeg = root->getElementById("3");
             mobility->setLeg(movementLeg);
@@ -316,10 +298,10 @@ void HostNode::handleEmptyFsmTransitions(cMessage *msg){
 
 void HostNode::handleEmptyMessageTransmissions(cMessage *msg){
 
-    int msgId = Node::getMsgId(msg);
+    int msgId = system->getMsgId(msg);
     switch(msgId){
-        case MSG_2_NO: ackReceived(canAcked, sendCanTimer, EMPTY_SEND_TO_ANOTHER_CAN, rcvdHostFast); break;
-        case MSG_5_NO: ackReceived(anotherCanAcked, sendAnotherCanTimer, EMPTY_EXIT, rcvdHostFast); break;
+        case MSG_2_NO: ackReceived(canAcked, sendCanTimer, GarbageCollectionSystem::EMPTY_SEND_TO_ANOTHER_CAN, rcvdHostFast); break;
+        case MSG_5_NO: ackReceived(anotherCanAcked, sendAnotherCanTimer, GarbageCollectionSystem::EMPTY_EXIT, rcvdHostFast); break;
     }
 }
 
@@ -333,13 +315,13 @@ void HostNode::handleSendTimer(cMessage *msg,
         return;
 
     // Are we in a state where a send should be done?
-    bool stateOk = currentFsm &&
-        (currentFsm->getState() == sendState || currentFsm->getState() == altSendState);
+    bool stateOk = system->currentFsm &&
+        (system->currentFsm->getState() == sendState || system->currentFsm->getState() == altSendState);
 
     // Are we in a sendable state, and is the waypoint reached?
     if (stateOk && atWp) {
         // gateIndex == 0 means we are sending to can, else (1) we send to  anotherCan
-        cMessage *req = (gateIndex == 0) ? Node::createMessage(MSG_1_IS_CAN_FULL) : Node::createMessage(MSG_4_IS_CAN_FULL);
+        cMessage *req = (gateIndex == 0) ? system->createMessage(MSG_1_IS_CAN_FULL) : system->createMessage(MSG_4_IS_CAN_FULL);
         send(req, "gate$o", gateIndex);
         sendHostFast++;
         updateStatusText();
@@ -376,129 +358,5 @@ void HostNode::ackReceived(bool &ackedFlag, cMessage *timer, int nextState, int 
     updateStatusText();
     ackedFlag = true;
     cancelEvent(timer);
-    FSM_Goto(*currentFsm, nextState);
-}
-
-void HostNode::renderInitialDelayStats(){
-
-    delayStatsHeader = new cTextFigure("headerDelayStats");
-    delayStatsHeader->setFont(cFigure::Font("Arial", 30, omnetpp::cAbstractImageFigure::FONT_BOLD));
-    delayStatsHeader->setPosition(cFigure::Point(2100, 25));
-
-    switch(fsmType){
-    case SLOW: delayStatsHeader->setText("Cloud-based solution with slow messages"); break;
-    case FAST: delayStatsHeader->setText("Fog-based solution with fast messages"); break;
-    case EMPTY: delayStatsHeader->setText("Fog-based solution with no messages"); break;
-    }
-
-
-    hostDelayStats = new cTextFigure("headerDelayStats");
-    hostDelayStats->setFont(cFigure::Font("Arial", 30));
-    hostDelayStats->setPosition(cFigure::Point(2100, 150));
-
-    canDelayStats = new cTextFigure("canDelayStats");
-    canDelayStats->setFont(cFigure::Font("Arial", 30));
-    canDelayStats->setPosition(cFigure::Point(2100, 350));
-
-    anotherCanDelayStats = new cTextFigure("anotherCanDelayStats");
-    anotherCanDelayStats->setFont(cFigure::Font("Arial", 30));
-    anotherCanDelayStats->setPosition(cFigure::Point(2100, 450));
-
-    cloudDelayStats = new cTextFigure("cloudDelayStats");
-    cloudDelayStats->setFont(cFigure::Font("Arial", 30));
-    cloudDelayStats->setPosition(cFigure::Point(2100, 550));
-
-    hostDelayStats->setText("Slow connection from the smartphone to others (time it takes) = \n"
-                            "Slow connection from others to the smartphone (time it takes) = \n"
-                            "Fast connection from the smartphone to others (time it takes) = \n"
-                            "Fast connection from others to the smartphone (time it takes) = \n");
-
-    canDelayStats->setText("Connection from the can to others (time it takes) = \n"
-                           "Connection from others to the can (time it takes) = \n");
-
-    anotherCanDelayStats->setText("Connection from the anotherCan to others (time it takes) = \n"
-                                  "Connection from others to the anotherCan (time it takes) = \n");
-
-    cloudDelayStats->setText("Slow connection from the Cloud to others (time it takes) = \n"
-                             "Slow connection from others to the Cloud (time it takes) = \n"
-                             "Fast connection from the Cloud to others (time it takes) = \n"
-                             "Fast connection from others to the Cloud (time it takes) = \n");
-
-    canvas->addFigure(delayStatsHeader);
-    canvas->addFigure(hostDelayStats);
-    canvas->addFigure(canDelayStats);
-    canvas->addFigure(anotherCanDelayStats);
-    canvas->addFigure(cloudDelayStats);
-
-}
-
-void HostNode::finish() {
-    std::ostringstream hostOut, canOut, anotherCanOut, cloudOut;
-
-    switch (fsmType) {
-        case SLOW: {
-            // Cloud-based: host uses slow link to cloud; cans talk fast to host/cloud as needed
-            hostOut << "Slow connection from the smartphone to others (time it takes) = " << GlobalDelays.slow_smartphone_to_others << "\n"; // Sum both sends to cloud from host
-            hostOut << "Slow connection from others to the smartphone (time it takes) = " << GlobalDelays.slow_others_to_smartphone << "\n"; // Sum both sends from cloud to host
-            hostOut << "Fast connection from the smartphone to others (time it takes) = " << GlobalDelays.fast_smartphone_to_others << "\n"; // Sum both sends from host to cans (dropped messages as well)
-            hostOut << "Fast connection from others to the smartphone (time it takes) = " << GlobalDelays.fast_others_to_smartphone << "\n"; // Sum messages from cans to host Yes/NO
-
-            canOut << "Connection from the can to others (time it takes) = " << GlobalDelays.connection_from_can_to_others << "\n"; // Sum messages from cans to host Yes/NO
-            canOut << "Connection from others to the can (time it takes) = " << GlobalDelays.connection_from_others_to_can << "\n\n"; // Sum messages from host to can
-
-            anotherCanOut << "Connection from the anotherCan to others (time it takes) = " << GlobalDelays.connection_from_another_can_to_others << "\n"; // Sum messages from anotherCan to host
-            anotherCanOut << "Connection from others to the anotherCan (time it takes) = " << GlobalDelays.connection_from_others_to_another_can << "\n"; // Sum messages from host to anotherCan
-
-            cloudOut << "Slow connection from the Cloud to others (time it takes) = " << GlobalDelays.slow_cloud_to_others << "\n"; // Sum sends from cloud to host
-            cloudOut << "Slow connection from others to the Cloud (time it takes) = " << GlobalDelays.slow_others_to_cloud << "\n"; // Sum sends from host to cloud
-            cloudOut << "Fast connection from the Cloud to others (time it takes) = 0\n";
-            cloudOut << "Fast connection from others to the Cloud (time it takes) = 0\n";
-            break;
-        }
-
-        case FAST: {
-            // Fog-based: cans talk directly to cloud (fast); host slow link unused for results
-            hostOut << "Slow connection from the smartphone to others (time it takes) = 0\n";
-            hostOut << "Slow connection from others to the smartphone (time it takes) = 0\n";
-            hostOut << "Fast connection from the smartphone to others (time it takes) = " << GlobalDelays.fast_smartphone_to_others << "\n"; // Sum both sends from host to cans (dropped messages as well)
-            hostOut << "Fast connection from others to the smartphone (time it takes) = " << GlobalDelays.fast_others_to_smartphone << "\n"; // Sum messages from cans to host Yes/NO
-
-            canOut << "Connection from the can to others (time it takes) = " << GlobalDelays.connection_from_can_to_others << "\n"; // Sum sent from can to host and cloud
-            canOut << "Connection from others to the can (time it takes) = " << GlobalDelays.connection_from_others_to_can << "\n"; // Sum rcv from host and cloud to can
-
-            anotherCanOut << "Connection from the anotherCan to others (time it takes) = " << GlobalDelays.connection_from_another_can_to_others << "\n"; // Sum sent from can to host and cloud
-            anotherCanOut << "Connection from others to the anotherCan (time it takes) = " << GlobalDelays.connection_from_others_to_another_can << "\n"; // Sum rcv from host and cloud to can
-
-            cloudOut << "Slow connection from the Cloud to others (time it takes) = 0\n";
-            cloudOut << "Slow connection from others to the Cloud (time it takes) = 0\n";
-            cloudOut << "Fast connection from the Cloud to others (time it takes) = " << GlobalDelays.fast_cloud_to_others << "\n"; // Sum sends from Cloud to both cans
-            cloudOut << "Fast connection from others to the Cloud (time it takes) = " << GlobalDelays.fast_others_to_cloud << "\n"; // Sum sends from cans to cloud
-            break;
-        }
-
-        case EMPTY: {
-            // No-garbage: only query/reply between host and cans matters; cloud paths effectively 0
-            hostOut << "Slow connection from the smartphone to others (time it takes) = 0\n";
-            hostOut << "Slow connection from others to the smartphone (time it takes) = 0\n";
-            hostOut << "Fast connection from the smartphone to others (time it takes) = " << GlobalDelays.fast_smartphone_to_others << "\n"; // Sum both sends from host to cans (dropped messages as well)
-            hostOut << "Fast connection from others to the smartphone (time it takes) = " << GlobalDelays.fast_others_to_smartphone << "\n"; // Sum messages from cans to host Yes/NO
-
-            canOut << "Connection from the can to others (time it takes) = " << GlobalDelays.connection_from_can_to_others << "\n"; // Sum messages from cans to host Yes/NO
-            canOut << "Connection from others to the can (time it takes) = " << GlobalDelays.connection_from_others_to_can << "\n"; // Sum messages from host to can
-
-            anotherCanOut << "Connection from the anotherCan to others (time it takes) = " << GlobalDelays.connection_from_another_can_to_others << "\n"; // Sum messages from anotherCan to host
-            anotherCanOut << "Connection from others to the anotherCan (time it takes) = " << GlobalDelays.connection_from_others_to_another_can << "\n"; // Sum messages from host to anotherCan
-
-            cloudOut << "Slow connection from the Cloud to others (time it takes) = 0\n";
-            cloudOut << "Slow connection from others to the Cloud (time it takes) = 0\n";
-            cloudOut << "Fast connection from the Cloud to others (time it takes) = 0\n";
-            cloudOut << "Fast connection from others to the Cloud (time it takes) = 0\n";
-            break;
-        }
-    }
-
-    hostDelayStats->setText(hostOut.str().c_str());
-    canDelayStats->setText(canOut.str().c_str());
-    anotherCanDelayStats->setText(anotherCanOut.str().c_str());
-    cloudDelayStats->setText(cloudOut.str().c_str());
+    FSM_Goto(*system->currentFsm, nextState);
 }

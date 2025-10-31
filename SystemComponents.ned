@@ -115,6 +115,7 @@ network GarbageCollectionSystem
 {
     
    	parameters:
+   	   @class(GarbageCollectionSystem);
    	   int numHosts = 1;
    	        	
     @display("bgb=3000,1250");
