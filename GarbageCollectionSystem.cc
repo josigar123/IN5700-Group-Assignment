@@ -141,19 +141,19 @@ void GarbageCollectionSystem::finish(){
     switch (fsmType) {
         case SLOW: {
             // Cloud-based: host uses slow link to cloud; cans talk fast to host/cloud as needed
-            hostOut << "Slow connection from the smartphone to others (time it takes) = " << GlobalDelays.slow_smartphone_to_others << "\n"; // Sum both sends to cloud from host
-            hostOut << "Slow connection from others to the smartphone (time it takes) = " << GlobalDelays.slow_others_to_smartphone << "\n"; // Sum both sends from cloud to host
-            hostOut << "Fast connection from the smartphone to others (time it takes) = " << GlobalDelays.fast_smartphone_to_others << "\n"; // Sum both sends from host to cans (dropped messages as well)
-            hostOut << "Fast connection from others to the smartphone (time it takes) = " << GlobalDelays.fast_others_to_smartphone << "\n"; // Sum messages from cans to host Yes/NO
+            hostOut << "Slow connection from the smartphone to others (time it takes) = " << GlobalDelays.slow_smartphone_to_others << "\n";
+            hostOut << "Slow connection from others to the smartphone (time it takes) = " << GlobalDelays.slow_others_to_smartphone << "\n";
+            hostOut << "Fast connection from the smartphone to others (time it takes) = " << GlobalDelays.fast_smartphone_to_others << "\n";
 
-            canOut << "Connection from the can to others (time it takes) = " << GlobalDelays.connection_from_can_to_others << "\n"; // Sum messages from cans to host Yes/NO
-            canOut << "Connection from others to the can (time it takes) = " << GlobalDelays.connection_from_others_to_can << "\n\n"; // Sum messages from host to can
+            hostOut << "Fast connection from others to the smartphone (time it takes) = " << GlobalDelays.fast_others_to_smartphone << "\n";
+            canOut << "Connection from the can to others (time it takes) = " << GlobalDelays.connection_from_can_to_others << "\n";
+            canOut << "Connection from others to the can (time it takes) = " << GlobalDelays.connection_from_others_to_can << "\n\n";
 
-            anotherCanOut << "Connection from the anotherCan to others (time it takes) = " << GlobalDelays.connection_from_another_can_to_others << "\n"; // Sum messages from anotherCan to host
-            anotherCanOut << "Connection from others to the anotherCan (time it takes) = " << GlobalDelays.connection_from_others_to_another_can << "\n"; // Sum messages from host to anotherCan
+            anotherCanOut << "Connection from the anotherCan to others (time it takes) = " << GlobalDelays.connection_from_another_can_to_others << "\n";
+            anotherCanOut << "Connection from others to the anotherCan (time it takes) = " << GlobalDelays.connection_from_others_to_another_can << "\n";
 
-            cloudOut << "Slow connection from the Cloud to others (time it takes) = " << GlobalDelays.slow_cloud_to_others << "\n"; // Sum sends from cloud to host
-            cloudOut << "Slow connection from others to the Cloud (time it takes) = " << GlobalDelays.slow_others_to_cloud << "\n"; // Sum sends from host to cloud
+            cloudOut << "Slow connection from the Cloud to others (time it takes) = " << GlobalDelays.slow_cloud_to_others << "\n";
+            cloudOut << "Slow connection from others to the Cloud (time it takes) = " << GlobalDelays.slow_others_to_cloud << "\n";
             cloudOut << "Fast connection from the Cloud to others (time it takes) = 0\n";
             cloudOut << "Fast connection from others to the Cloud (time it takes) = 0\n";
             break;
@@ -163,19 +163,19 @@ void GarbageCollectionSystem::finish(){
             // Fog-based: cans talk directly to cloud (fast); host slow link unused for results
             hostOut << "Slow connection from the smartphone to others (time it takes) = 0\n";
             hostOut << "Slow connection from others to the smartphone (time it takes) = 0\n";
-            hostOut << "Fast connection from the smartphone to others (time it takes) = " << GlobalDelays.fast_smartphone_to_others << "\n"; // Sum both sends from host to cans (dropped messages as well)
-            hostOut << "Fast connection from others to the smartphone (time it takes) = " << GlobalDelays.fast_others_to_smartphone << "\n"; // Sum messages from cans to host Yes/NO
+            hostOut << "Fast connection from the smartphone to others (time it takes) = " << GlobalDelays.fast_smartphone_to_others << "\n";
+            hostOut << "Fast connection from others to the smartphone (time it takes) = " << GlobalDelays.fast_others_to_smartphone << "\n";
 
-            canOut << "Connection from the can to others (time it takes) = " << GlobalDelays.connection_from_can_to_others << "\n"; // Sum sent from can to host and cloud
-            canOut << "Connection from others to the can (time it takes) = " << GlobalDelays.connection_from_others_to_can << "\n"; // Sum rcv from host and cloud to can
+            canOut << "Connection from the can to others (time it takes) = " << GlobalDelays.connection_from_can_to_others << "\n";
+            canOut << "Connection from others to the can (time it takes) = " << GlobalDelays.connection_from_others_to_can << "\n";
 
-            anotherCanOut << "Connection from the anotherCan to others (time it takes) = " << GlobalDelays.connection_from_another_can_to_others << "\n"; // Sum sent from can to host and cloud
-            anotherCanOut << "Connection from others to the anotherCan (time it takes) = " << GlobalDelays.connection_from_others_to_another_can << "\n"; // Sum rcv from host and cloud to can
+            anotherCanOut << "Connection from the anotherCan to others (time it takes) = " << GlobalDelays.connection_from_another_can_to_others << "\n";
+            anotherCanOut << "Connection from others to the anotherCan (time it takes) = " << GlobalDelays.connection_from_others_to_another_can << "\n\n";
 
             cloudOut << "Slow connection from the Cloud to others (time it takes) = 0\n";
             cloudOut << "Slow connection from others to the Cloud (time it takes) = 0\n";
-            cloudOut << "Fast connection from the Cloud to others (time it takes) = " << GlobalDelays.fast_cloud_to_others << "\n"; // Sum sends from Cloud to both cans
-            cloudOut << "Fast connection from others to the Cloud (time it takes) = " << GlobalDelays.fast_others_to_cloud << "\n"; // Sum sends from cans to cloud
+            cloudOut << "Fast connection from the Cloud to others (time it takes) = " << GlobalDelays.fast_cloud_to_others << "\n";
+            cloudOut << "Fast connection from others to the Cloud (time it takes) = " << GlobalDelays.fast_others_to_cloud << "\n";
             break;
         }
 
@@ -183,14 +183,14 @@ void GarbageCollectionSystem::finish(){
             // No-garbage: only query/reply between host and cans matters; cloud paths effectively 0
             hostOut << "Slow connection from the smartphone to others (time it takes) = 0\n";
             hostOut << "Slow connection from others to the smartphone (time it takes) = 0\n";
-            hostOut << "Fast connection from the smartphone to others (time it takes) = " << GlobalDelays.fast_smartphone_to_others << "\n"; // Sum both sends from host to cans (dropped messages as well)
-            hostOut << "Fast connection from others to the smartphone (time it takes) = " << GlobalDelays.fast_others_to_smartphone << "\n"; // Sum messages from cans to host Yes/NO
+            hostOut << "Fast connection from the smartphone to others (time it takes) = " << GlobalDelays.fast_smartphone_to_others << "\n";
+            hostOut << "Fast connection from others to the smartphone (time it takes) = " << GlobalDelays.fast_others_to_smartphone << "\n";
 
-            canOut << "Connection from the can to others (time it takes) = " << GlobalDelays.connection_from_can_to_others << "\n"; // Sum messages from cans to host Yes/NO
-            canOut << "Connection from others to the can (time it takes) = " << GlobalDelays.connection_from_others_to_can << "\n"; // Sum messages from host to can
+            canOut << "Connection from the can to others (time it takes) = " << GlobalDelays.connection_from_can_to_others << "\n";
+            canOut << "Connection from others to the can (time it takes) = " << GlobalDelays.connection_from_others_to_can << "\n";
 
-            anotherCanOut << "Connection from the anotherCan to others (time it takes) = " << GlobalDelays.connection_from_another_can_to_others << "\n"; // Sum messages from anotherCan to host
-            anotherCanOut << "Connection from others to the anotherCan (time it takes) = " << GlobalDelays.connection_from_others_to_another_can << "\n"; // Sum messages from host to anotherCan
+            anotherCanOut << "Connection from the anotherCan to others (time it takes) = " << GlobalDelays.connection_from_another_can_to_others << "\n";
+            anotherCanOut << "Connection from others to the anotherCan (time it takes) = " << GlobalDelays.connection_from_others_to_another_can << "\n";
 
             cloudOut << "Slow connection from the Cloud to others (time it takes) = 0\n";
             cloudOut << "Slow connection from others to the Cloud (time it takes) = 0\n";
