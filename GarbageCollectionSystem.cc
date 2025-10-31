@@ -16,6 +16,7 @@ void GarbageCollectionSystem::initialize(){
     canNode = check_and_cast<Node*>(getSubmodule("can"));
     anotherCanNode = check_and_cast<Node*>(getSubmodule("anotherCan"));
     cloudNode = check_and_cast<Node*>(getSubmodule("cloud"));
+    hostNode = check_and_cast<Node*>(getSubmodule("host", 0));
 
     canvas = getCanvas();
 
@@ -44,14 +45,14 @@ void GarbageCollectionSystem::initialize(){
     }
 
     // Populate gate pointers for runtime calculations
-    if (hasGate("gate$o", 0))
-            fastCellularLink = check_and_cast<RealisticDelayChannel *>(gate("gate$o", 0)->getChannel());
+    if (hostNode->hasGate("gate$o", 0))
+            fastCellularLink = check_and_cast<RealisticDelayChannel *>(hostNode->gate("gate$o", 0)->getChannel());
 
-        if (hasGate("gate$o", 1))
-            fastWiFiLink = check_and_cast<RealisticDelayChannel *>(gate("gate$o", 1)->getChannel());
+        if (hostNode->hasGate("gate$o", 1))
+            fastWiFiLink = check_and_cast<RealisticDelayChannel *>(hostNode->gate("gate$o", 1)->getChannel());
         // HostNode has SlowCellularLink at index 2
-        if (hasGate("gate$o", 2))
-            slowCellularLink = check_and_cast<RealisticDelayChannel *>(gate("gate$o", 2)->getChannel());
+        if (hostNode->hasGate("gate$o", 2))
+            slowCellularLink = check_and_cast<RealisticDelayChannel *>(hostNode->gate("gate$o", 2)->getChannel());
 
     renderInitialDelayStats();
 }

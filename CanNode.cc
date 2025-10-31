@@ -70,6 +70,9 @@ void CanNode::handleMessage(cMessage *msg){
                 resp = system->createMessage(MSG_2_NO);
             }else{
                 resp = system->createMessage(MSG_3_YES);
+
+                simtime_t delay = system->fastCellularLink->computeDynamicDelay(this, system->hostNode);
+                GlobalDelays.fast_others_to_smartphone += delay.dbl();
             }
 
             send(resp, "gate$o", 0);

@@ -62,6 +62,7 @@ public:
     Node* canNode                           = nullptr;
     Node* anotherCanNode                    = nullptr;
     Node* cloudNode                         = nullptr;
+    Node* hostNode                          = nullptr;
 
     RealisticDelayChannel *slowCellularLink = nullptr;
     RealisticDelayChannel *fastCellularLink = nullptr;

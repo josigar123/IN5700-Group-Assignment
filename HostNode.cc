@@ -51,14 +51,11 @@ protected:
     virtual bool isInRangeOf(Node *target);
     void handleSlowFsmTransitions(cMessage *msg);
     void handleEmptyFsmTransitions(cMessage *msg);
-
     void handleSlowMessageTransmissions(cMessage *msg);
     void handleFastMessageTransmissions(cMessage *msg);
     void handleEmptyMessageTransmissions(cMessage *msg);
-
     void handleSendTimer(cMessage *msg, bool &inRage, bool &acked, bool &atWp, const char *targetName, int gateIndex, int sendState, int altSendState);
     void updateRangeState(bool nowInRange, bool &prevInRange, cMessage *timer, const char *name);
-
     void updateStatusText();
     void ackReceived(bool &ackedFlag, cMessage *timer, int nextState, int &rcvdCounter);
 };
@@ -203,6 +200,10 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
         case FSM_Enter(GarbageCollectionSystem::SLOW_SEND_TO_CAN_CLOUD):
         {
             cMessage *req = system->createMessage(MSG_7_COLLECT_GARBAGE);
+
+            simtime_t delay = system->slowCellularLink->computeDynamicDelay(this, system->cloudNode);
+            GlobalDelays.slow_smartphone_to_others += delay.dbl();
+
             send(req, "gate$o", 2);
             sendHostSlow++;
             updateStatusText();
@@ -211,6 +212,10 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
         case FSM_Enter(GarbageCollectionSystem::SLOW_SEND_TO_ANOTHER_CAN_CLOUD):
         {
             cMessage *req = system->createMessage(MSG_9_COLLECT_GARBAGE);
+
+            simtime_t delay = system->slowCellularLink->computeDynamicDelay(this, system->cloudNode);
+            GlobalDelays.slow_smartphone_to_others += delay.dbl();
+
             send(req, "gate$o", 2);
             sendHostSlow++;
             updateStatusText();
@@ -322,6 +327,11 @@ void HostNode::handleSendTimer(cMessage *msg,
     if (stateOk && atWp) {
         // gateIndex == 0 means we are sending to can, else (1) we send to  anotherCan
         cMessage *req = (gateIndex == 0) ? system->createMessage(MSG_1_IS_CAN_FULL) : system->createMessage(MSG_4_IS_CAN_FULL);
+
+        Node *nodeToCalculateDelayFor = gateIndex == 0 ? system->canNode : system->anotherCanNode;
+        simtime_t delay = system->fastCellularLink->computeDynamicDelay(this, nodeToCalculateDelayFor);
+        GlobalDelays.fast_smartphone_to_others += delay.dbl();
+
         send(req, "gate$o", gateIndex);
         sendHostFast++;
         updateStatusText();
