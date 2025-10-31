@@ -49,6 +49,28 @@ void Node::initialize()
     oval = new cOvalFigure(figureName.c_str());
     configName = getEnvir()->getConfigEx()->getActiveConfigName();
 
+    // ### SETUP APPROPRIATE FSM CONFIG ###
+    if(strcmp(configName, "GarbageInTheCansAndSlow") == 0){
+        fsmType = SLOW;
+        currentFsm = &slowFsm;
+        currentFsm->setName("slow");
+        FSM_Goto(*currentFsm, SLOW_SEND_TO_CAN);
+    }
+
+    if(strcmp(configName, "GarbageInTheCansAndFast") == 0){
+        fsmType = FAST;
+        currentFsm = &fastFsm;
+        currentFsm->setName("fast");
+        FSM_Goto(*currentFsm, FAST_SEND_TO_CAN);
+    }
+
+    if(strcmp(configName, "NoGarbageInTheCans") == 0){
+        fsmType = EMPTY;
+        currentFsm = &emptyFsm;
+        currentFsm->setName("empty");
+        FSM_Goto(*currentFsm, EMPTY_SEND_TO_CAN);
+    }
+
     // Create coverage circle
     renderCoverageCircle(x, y);
 

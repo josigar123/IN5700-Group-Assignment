@@ -50,35 +50,6 @@ protected:
     // Text containing stats
     cTextFigure *statusText = nullptr;
 
-    // Easy lookup of config, no need to str compare
-    enum FsmType { FAST, SLOW, EMPTY };
-    FsmType fsmType;
-
-    // Defines the three state machines, one for each config at compile tieme, and a pointer which is given a value at runtime
-    // pointing to the appropriate state machine
-    cFSM *currentFsm; // For storing the appropriate FSM
-    cFSM fastFsm;
-    enum{
-        FAST_SEND_TO_CAN = FSM_Steady(1),
-        FAST_SEND_TO_ANOTHER_CAN = FSM_Steady(2),
-        FAST_EXIT = FSM_Steady(3),
-    };
-    cFSM slowFsm;
-    enum{
-       SLOW_SEND_TO_CAN = FSM_Steady(1),
-       SLOW_SEND_TO_CAN_CLOUD = FSM_Steady(2),
-       SLOW_SEND_TO_ANOTHER_CAN = FSM_Steady(3),
-       SLOW_SEND_TO_ANOTHER_CAN_CLOUD = FSM_Steady(4),
-       SLOW_EXIT = FSM_Steady(5),
-    };
-    cFSM emptyFsm;
-    enum{
-        EMPTY_SEND_TO_CAN = FSM_Steady(1),
-        EMPTY_SEND_TO_ANOTHER_CAN = FSM_Steady(2),
-        EMPTY_EXIT = FSM_Steady(3),
-    };
-    
-
 protected:
     virtual void initialize() override;
     virtual void handleMessage(cMessage *msg) override;
@@ -125,27 +96,7 @@ void HostNode::initialize(){
     sendCanTimer = new cMessage("sendCanTimer");
     sendAnotherCanTimer = new cMessage("sendAnotherCanTimer");
 
-    // ### SETUP APPROPRIATE FSM CONFIG ###
-    if(strcmp(configName, "GarbageInTheCansAndSlow") == 0){
-        fsmType = SLOW;
-        currentFsm = &slowFsm;
-        currentFsm->setName("slow");
-        FSM_Goto(*currentFsm, SLOW_SEND_TO_CAN);
-    }
 
-    if(strcmp(configName, "GarbageInTheCansAndFast") == 0){
-        fsmType = FAST;
-        currentFsm = &fastFsm;
-        currentFsm->setName("fast");
-        FSM_Goto(*currentFsm, FAST_SEND_TO_CAN);
-    }
-
-    if(strcmp(configName, "NoGarbageInTheCans") == 0){
-        fsmType = EMPTY;
-        currentFsm = &emptyFsm;
-        currentFsm->setName("empty");
-        FSM_Goto(*currentFsm, EMPTY_SEND_TO_CAN);
-    }
 
     // ### SETUP STATUS TEXT ###
     statusText = new cTextFigure("hostStatus");

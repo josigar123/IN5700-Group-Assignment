@@ -67,6 +67,34 @@ protected:
 
     double range = 0;
 
+    // Easy lookup of config, no need to str compare
+    enum FsmType { FAST, SLOW, EMPTY };
+    FsmType fsmType;
+
+    // Defines the three state machines, one for each config at compile tieme, and a pointer which is given a value at runtime
+    // pointing to the appropriate state machine
+    cFSM *currentFsm; // For storing the appropriate FSM
+    cFSM fastFsm;
+    enum{
+        FAST_SEND_TO_CAN = FSM_Steady(1),
+        FAST_SEND_TO_ANOTHER_CAN = FSM_Steady(2),
+        FAST_EXIT = FSM_Steady(3),
+    };
+    cFSM slowFsm;
+    enum{
+       SLOW_SEND_TO_CAN = FSM_Steady(1),
+       SLOW_SEND_TO_CAN_CLOUD = FSM_Steady(2),
+       SLOW_SEND_TO_ANOTHER_CAN = FSM_Steady(3),
+       SLOW_SEND_TO_ANOTHER_CAN_CLOUD = FSM_Steady(4),
+       SLOW_EXIT = FSM_Steady(5),
+    };
+    cFSM emptyFsm;
+    enum{
+        EMPTY_SEND_TO_CAN = FSM_Steady(1),
+        EMPTY_SEND_TO_ANOTHER_CAN = FSM_Steady(2),
+        EMPTY_EXIT = FSM_Steady(3),
+    };
+
 protected:
     virtual void initialize() override;
 
