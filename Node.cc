@@ -15,6 +15,9 @@
 using namespace omnetpp;
 using namespace inet;
 
+// GLobal structure for delay accumulations
+LinkDelays GlobalDelays;
+
 // Register signals for fast config completed message tx
 simsignal_t Node::garbageCollectedSignalFromCan = cComponent::registerSignal("garbageCollectedFromCan");
 simsignal_t Node::garbageCollectedSignalFromAnotherCan = cComponent::registerSignal("garbageCollectedFromAnotherCan");

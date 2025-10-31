@@ -18,6 +18,19 @@
 using namespace omnetpp;
 using namespace inet;
 
+// Define a global struct instance for delay accumulation
+struct LinkDelays {
+    double slow_smartphone_to_others = 0, slow_other_to_smartphone = 0, fast_smartphone_to_others = 0, fast_others_to_smartphone = 0;
+
+    double connection_from_can_to_others = 0, connection_from_others_to_can = 0;
+
+    double connection_from_another_can_to_others = 0, connection_from_others_to_another_can = 0;
+
+    double slow_cloud_to_others = 0, slow_others_to_cloud = 0, fast_cloud_to_others = 0, fast_others_to_cloud = 0;
+};
+
+extern LinkDelays GlobalDelays;
+
 enum MsgID {
     MSG_1_IS_CAN_FULL = 1,
     MSG_2_NO,
