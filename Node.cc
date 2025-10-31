@@ -51,13 +51,13 @@ void Node::initialize()
 
     // Populate gate pointers for runtime calculations
     if (hasGate("gate$o", 0))
-            fastCellularLink = gate("gate$o", 0)->getChannel();
+            fastCellularLink = check_and_cast<RealisticDelayChannel *>(gate("gate$o", 0)->getChannel());
 
         if (hasGate("gate$o", 1))
-            fastWiFiLink = gate("gate$o", 1)->getChannel();  // for CanNodes/AnotherCanNodes
+            fastWiFiLink = check_and_cast<RealisticDelayChannel *>(gate("gate$o", 1)->getChannel());
         // HostNode has SlowCellularLink at index 2
         if (hasGate("gate$o", 2))
-            slowCellularLink = gate("gate$o", 2)->getChannel();
+            slowCellularLink = check_and_cast<RealisticDelayChannel *>(gate("gate$o", 2)->getChannel());
 
     EV << "Node " << getName() << " has channels: "
        << (slowCellularLink ? "slowCell " : "")

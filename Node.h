@@ -13,6 +13,7 @@
 #include <omnetpp.h>
 #include "inet/common/INETDefs.h"
 #include "inet/common/geometry/common/Coord.h"
+#include "RealisticDelayChannel.h"
 
 using namespace omnetpp;
 using namespace inet;
@@ -38,18 +39,18 @@ public:
     double y;
 
 protected:
-    cModule *network           = nullptr;
-    cOvalFigure *oval          = nullptr;
-    cCanvas *canvas =            nullptr;
-    const char *configName     = nullptr;
+    cModule *network           				= nullptr;
+    cOvalFigure *oval          				= nullptr;
+    cCanvas *canvas                         = nullptr;
+    const char *configName     				= nullptr;
 
-    Node* canNode              = nullptr;
-    Node* anotherCanNode       = nullptr;
-    Node* cloudNode            = nullptr;
+    Node* canNode              				= nullptr;
+    Node* anotherCanNode       				= nullptr;
+    Node* cloudNode            				= nullptr;
 
-    cChannel *slowCellularLink = nullptr;
-    cChannel *fastCellularLink = nullptr;
-    cChannel *fastWiFiLink     = nullptr;
+    RealisticDelayChannel *slowCellularLink = nullptr;
+    RealisticDelayChannel *fastCellularLink = nullptr;
+    RealisticDelayChannel *fastWiFiLink     = nullptr;
 
     double range = 0;
 
