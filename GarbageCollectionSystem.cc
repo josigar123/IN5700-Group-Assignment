@@ -46,13 +46,16 @@ void GarbageCollectionSystem::initialize(){
 
     // Populate gate pointers for runtime calculations
     if (hostNode->hasGate("gate$o", 0))
-            fastCellularLink = check_and_cast<RealisticDelayChannel *>(hostNode->gate("gate$o", 0)->getChannel());
+        fastCellularLink = check_and_cast<RealisticDelayChannel *>(
+            hostNode->gate("gate$o", 0)->getChannel());
 
-        if (hostNode->hasGate("gate$o", 1))
-            fastWiFiLink = check_and_cast<RealisticDelayChannel *>(hostNode->gate("gate$o", 1)->getChannel());
-        // HostNode has SlowCellularLink at index 2
-        if (hostNode->hasGate("gate$o", 2))
-            slowCellularLink = check_and_cast<RealisticDelayChannel *>(hostNode->gate("gate$o", 2)->getChannel());
+    if (canNode->hasGate("gate$o", 1))
+        fastWiFiLink = check_and_cast<RealisticDelayChannel *>(
+            canNode->gate("gate$o", 1)->getChannel());
+
+    if (hostNode->hasGate("gate$o", 2))
+        slowCellularLink = check_and_cast<RealisticDelayChannel *>(
+            hostNode->gate("gate$o", 2)->getChannel());
 
     renderInitialDelayStats();
 }
