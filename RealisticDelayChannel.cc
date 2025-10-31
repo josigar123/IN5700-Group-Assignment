@@ -31,7 +31,7 @@ simtime_t RealisticDelayChannel::computeDynamicDelay(cModule *src, cModule *dst)
     double propagationSec = distanceM / propSpeed;   // meters / (m/s) = seconds
 
     // calculate the total delay, if its less than zero, set delay to zer
-    double totalSec = baseSec ;//+ jitterSec + propagationSec;
+    double totalSec = baseSec + jitterSec + propagationSec;
     if (totalSec < 0) totalSec = 0;
 
     // Return in simtime seconds
