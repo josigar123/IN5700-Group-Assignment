@@ -11,15 +11,29 @@ void RealisticDelayChannel::initialize()
     propSpeed = par("propSpeed");
 }
 
-simtime_t RealisticDelayChannel::computeDynamicDelay(cModule *src, cModule *dst){
-
+simtime_t RealisticDelayChannel::computeDynamicDelay(cModule *src, cModule *dst)
+{
+    // Cast modules to Node pointers
     Node *srcNode = check_and_cast<Node *>(src);
     Node *dstNode = check_and_cast<Node *>(dst);
-    double distanceM = sqrt(pow(srcNode->x - dstNode->x, 2) + pow(srcNode->y - dstNode->y, 2));
 
+    // Calculate the differences in coords
+    double dx = srcNode->x - dstNode->x;
+    double dy = srcNode->y - dstNode->y;
+    // Calculate the distance in meters
+    double distanceM = sqrt(dx*dx + dy*dy);
 
-    double jitterMs = uniform(-jitterPercentage, jitterPercentage) * baseLatency.dbl();
-    double propagationDelayMs = (distanceM / propSpeed) * 1000;
+    // baseLatency in seconds
+    double baseSec = SIMTIME_DBL(baseLatency);
 
-    return (simtime_t) (baseLatency + jitterMs + propagationDelayMs);
+    // Calculate jitter in seconds
+    double jitterSec = uniform(-jitterPercentage, jitterPercentage) * baseSec;
+    double propagationSec = distanceM / propSpeed;   // meters / (m/s) = seconds
+
+    // calculate the total delay, if its less than zero, set delay to zer
+    double totalSec = baseSec + jitterSec + propagationSec;
+    if (totalSec < 0) totalSec = 0;
+
+    // Return in simtime seconds
+    return SimTime(totalSec, SIMTIME_S);
 }
