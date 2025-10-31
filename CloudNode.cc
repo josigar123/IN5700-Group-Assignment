@@ -59,6 +59,10 @@ void CloudNode::handleMessage(cMessage *msg){
                 sentCloudFast++;
                 rcvdCloudFast++;
                 updateStatusText();
+
+                simtime_t delay = system->fastWiFiLink->computeDynamicDelay(this, system->canNode);
+                GlobalDelays.connection_from_others_to_can += delay.dbl();
+                GlobalDelays.fast_cloud_to_others += delay.dbl();
             }
             else{
 
@@ -87,6 +91,10 @@ void CloudNode::handleMessage(cMessage *msg){
                 sentCloudFast++;
                 rcvdCloudFast++;
                 updateStatusText();
+
+                simtime_t delay = system->fastWiFiLink->computeDynamicDelay(this, system->anotherCanNode);
+                GlobalDelays.connection_from_others_to_another_can += delay.dbl();
+                GlobalDelays.fast_cloud_to_others += delay.dbl();
             }
             else{
                 if(statusText != nullptr){

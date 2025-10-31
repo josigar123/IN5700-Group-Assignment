@@ -86,6 +86,10 @@ void AnotherCanNode::handleMessage(cMessage *msg){
                 send(cloudMsg, "gate$o", 1);
                 sendAnotherCanFast++;
                 updateStatusText();
+
+                simtime_t delay = system->fastWiFiLink->computeDynamicDelay(this, system->cloudNode);
+                GlobalDelays.connection_from_another_can_to_others += delay.dbl();
+                GlobalDelays.fast_others_to_cloud += delay.dbl();
             }
 
             break;
