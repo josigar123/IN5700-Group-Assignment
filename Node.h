@@ -38,14 +38,18 @@ public:
     double y;
 
 protected:
-    cModule *network =           nullptr;
-    cOvalFigure *oval =          nullptr;
+    cModule *network           = nullptr;
+    cOvalFigure *oval          = nullptr;
     cCanvas *canvas =            nullptr;
-    const char *configName =     nullptr;
+    const char *configName     = nullptr;
+
+    Node* canNode              = nullptr;
+    Node* anotherCanNode       = nullptr;
+    Node* cloudNode            = nullptr;
 
     cChannel *slowCellularLink = nullptr;
     cChannel *fastCellularLink = nullptr;
-    cChannel *fastWiFiLink =     nullptr;
+    cChannel *fastWiFiLink     = nullptr;
 
     double range = 0;
 

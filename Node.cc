@@ -25,16 +25,21 @@ void Node::initialize()
 {
     EV << "INITIALIZING NODE: " << getFullPath() << "\n";
 
-    // Extract module params
-    x = par("x");
-    y = par("y");
-
-    // Set class fields
-    range = par("range");
-
     network = getParentModule();
     while (network->getParentModule() != nullptr) // Dig out the parentModule
         network = network->getParentModule();
+
+
+    // Set the node pointers
+    canNode = check_and_cast<Node*>(getParentModule()->getSubmodule("can"));
+    anotherCanNode = check_and_cast<Node*>(getParentModule()->getSubmodule("anotherCan"));
+    cloudNode = check_and_cast<Node*>(network->getSubmodule("cloud"));
+
+    // Extract module params
+    x = par("x");
+    y = par("y");
+    range = par("range");
+
     canvas = network->getCanvas();
 
     std::string figureName = std::string("coverage_") + getName();

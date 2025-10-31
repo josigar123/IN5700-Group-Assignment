@@ -21,14 +21,6 @@ struct LinkDelays{
 class HostNode : public Node, public cListener{
 
 protected:
-    // Pointers to the nodes system
-    Node* canNode;
-    Node* anotherCanNode;
-    Node* cloudNode;
-
-    // Member for modifying comm links
-    cChannel *slowLink;
-    cChannel *fastLink;
 
     // Text figures for holding the delay statistics to be displayed at the end
     cTextFigure *delayStatsHeader = nullptr;
@@ -131,11 +123,6 @@ void HostNode::initialize(){
     // Subscribe to the signal for mobilitystatechanged
     mobility = check_and_cast<Extended::TurtleMobility*>(getSubmodule("mobility"));
     mobility->subscribe(inet::MobilityBase::mobilityStateChangedSignal, this);
-
-    // Fetch the system nodes for access
-    canNode = check_and_cast<Node*>(getParentModule()->getSubmodule("can"));
-    anotherCanNode = check_and_cast<Node*>(getParentModule()->getSubmodule("anotherCan"));
-    cloudNode = check_and_cast<Node*>(network->getSubmodule("cloud"));
 
     // Subscribe to collection signals
     canNode->subscribe(Node::garbageCollectedSignalFromCan, this);
