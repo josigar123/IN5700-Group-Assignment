@@ -1,11 +1,12 @@
 <?xml version="1.0" ?>
 <movements>
+    <!-- THREE LEGS FOR TRAVERSING THE PATH, NEXT LEG IS FOUND WITH ID. INITIAL SPEED AND BORDER POLICY IS SET WITHIN THE FIRST LEG AS SEEN BELOW -->
     <movement id="1">
         <set x="1750" y="300" z="0" speed="370" angle="0" borderPolicy="reflect"/>
         <turn angle="180"/>
         <forward d="1460"/>    
     </movement>
-    
+
     <movement id="2">
     <turn angle="270"/>
        <forward d="690"/>
