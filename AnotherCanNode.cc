@@ -69,11 +69,11 @@ void AnotherCanNode::handleMessage(cMessage *msg){
 
             // Create message based on config
             cMessage *resp;
-            if(strcmp(system->configName, "NoGarbageInTheCans") == 0){
-                resp = system->createMessage(MSG_5_NO);
-            }else{
-                resp = system->createMessage(MSG_6_YES);
+            switch(system->fsmType){
+                case GarbageCollectionSystem::EMPTY: resp = system->createMessage(MSG_5_NO); break;
+                default: resp = system->createMessage(MSG_6_YES); break;
             }
+
 
             // Calculate delay and add to global structure, send and update local stats
             simtime_t delay = system->fastCellularLink->computeDynamicDelay(this, system->hostNode);
@@ -85,18 +85,21 @@ void AnotherCanNode::handleMessage(cMessage *msg){
             rcvdAnotherCanFast++;
             updateStatusText();
 
-            // Send concurrent message to cloud if in fast config
-            if(strcmp(system->configName, "GarbageInTheCansAndFast") == 0){
-                cMessage *cloudMsg = system->createMessage(MSG_9_COLLECT_GARBAGE);
-                send(cloudMsg, "gate$o", 1);
-                sendAnotherCanFast++;
-                updateStatusText();
+            switch(system->fsmType)
+            {
+                case GarbageCollectionSystem::FAST:
+                {
+                    cMessage *cloudMsg = system->createMessage(MSG_9_COLLECT_GARBAGE);
+                    send(cloudMsg, "gate$o", 1);
+                    sendAnotherCanFast++;
+                    updateStatusText();
 
-                simtime_t delay = system->fastWiFiLink->computeDynamicDelay(this, system->cloudNode);
-                GlobalDelays.connection_from_another_can_to_others += delay.dbl();
-                GlobalDelays.fast_others_to_cloud += delay.dbl();
+                    simtime_t delay = system->fastWiFiLink->computeDynamicDelay(this, system->cloudNode);
+                    GlobalDelays.connection_from_another_can_to_others += delay.dbl();
+                    GlobalDelays.fast_others_to_cloud += delay.dbl();
+                    break;
+                }
             }
-
             break;
         }
     }
