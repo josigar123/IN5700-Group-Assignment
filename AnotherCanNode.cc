@@ -47,6 +47,7 @@ void AnotherCanNode::handleMessage(cMessage *msg){
     int msgId = system->getMsgId(msg);
 
     switch(msgId){
+        // Triggered in fast config, emit signal that comm with cloud is complete so host knows to move
         case MSG_10_OK:
         {
             rcvdAnotherCanFast++;
@@ -56,7 +57,7 @@ void AnotherCanNode::handleMessage(cMessage *msg){
         }
         case MSG_4_IS_CAN_FULL:
         {
-
+            // Drop or process message
             if(dropCount < dropLimit){
                 bubble("Lost message");
                 dropCount++;
@@ -65,6 +66,8 @@ void AnotherCanNode::handleMessage(cMessage *msg){
                 break; // Break early to reduce nesting by one level
             }
 
+
+            // Create message based on config
             cMessage *resp;
             if(strcmp(system->configName, "NoGarbageInTheCans") == 0){
                 resp = system->createMessage(MSG_5_NO);
@@ -72,6 +75,7 @@ void AnotherCanNode::handleMessage(cMessage *msg){
                 resp = system->createMessage(MSG_6_YES);
             }
 
+            // Calculate delay and add to global structure, send and update local stats
             simtime_t delay = system->fastCellularLink->computeDynamicDelay(this, system->hostNode);
             GlobalDelays.fast_others_to_smartphone += delay.dbl();
             GlobalDelays.connection_from_another_can_to_others += delay.dbl();
@@ -81,6 +85,7 @@ void AnotherCanNode::handleMessage(cMessage *msg){
             rcvdAnotherCanFast++;
             updateStatusText();
 
+            // Send concurrent message to cloud if in fast config
             if(strcmp(system->configName, "GarbageInTheCansAndFast") == 0){
                 cMessage *cloudMsg = system->createMessage(MSG_9_COLLECT_GARBAGE);
                 send(cloudMsg, "gate$o", 1);
@@ -98,7 +103,7 @@ void AnotherCanNode::handleMessage(cMessage *msg){
     delete msg;
 }
 
-
+// Util for text rendering
 void AnotherCanNode::updateStatusText() {
     char buf[200];
     sprintf(buf, "sentAnotherCanFast: %d rcvdAnotherCanFast: %d numberOfLostAnotherCanMsgs: %d",
