@@ -13,16 +13,20 @@ Define_Module(GarbageCollectionSystem);
 
 void GarbageCollectionSystem::initialize(){
 
+    // Retrieve the system nodes
     canNode = check_and_cast<Node*>(getSubmodule("can"));
     anotherCanNode = check_and_cast<Node*>(getSubmodule("anotherCan"));
     cloudNode = check_and_cast<Node*>(getSubmodule("cloud"));
     hostNode = check_and_cast<Node*>(getSubmodule("host", 0));
 
+    // get the network canvas
     canvas = getCanvas();
 
+    // retrieve the config name
     configName = getEnvir()->getConfigEx()->getActiveConfigName();
 
     // ### SETUP APPROPRIATE FSM CONFIG ###
+    // Assign fsdType, and initial state to go to
     if(strcmp(configName, "GarbageInTheCansAndSlow") == 0){
         fsmType = SLOW;
         currentFsm = &slowFsm;
@@ -57,9 +61,10 @@ void GarbageCollectionSystem::initialize(){
         slowCellularLink = check_and_cast<RealisticDelayChannel *>(
             hostNode->gate("gate$o", 2)->getChannel());
 
-    renderInitialDelayStats();
+    renderInitialDelayStats(); // Empty stats
 }
 
+// Enum as an easy index into a predefines array, also created an id field which can be accessed
 cMessage *GarbageCollectionSystem::createMessage(MsgID id){
     static const char *names[] = {
         "",                       // 0 unused
@@ -80,10 +85,12 @@ cMessage *GarbageCollectionSystem::createMessage(MsgID id){
     return msg;
 }
 
+// Get the id for a message
 int GarbageCollectionSystem::getMsgId(cMessage *msg){
     return (int)(msg->hasPar("msgId") ? msg->par("msgId") : 0); // Fallback to 0 for invalid message type
 }
 
+// Render empty statistics initially
 void GarbageCollectionSystem::renderInitialDelayStats(){
     delayStatsHeader = new cTextFigure("headerDelayStats");
     delayStatsHeader->setFont(cFigure::Font("Arial", 30, omnetpp::cAbstractImageFigure::FONT_BOLD));
@@ -135,6 +142,7 @@ void GarbageCollectionSystem::renderInitialDelayStats(){
     canvas->addFigure(cloudDelayStats);
 }
 
+// Simply writes to a stream based on which config is active, the final delay values and sets the figure text with final info
 void GarbageCollectionSystem::finish(){
     std::ostringstream hostOut, canOut, anotherCanOut, cloudOut;
 

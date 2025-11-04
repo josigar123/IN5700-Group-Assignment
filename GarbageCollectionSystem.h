@@ -31,8 +31,10 @@ struct LinkDelays {
     double slow_cloud_to_others = 0, slow_others_to_cloud = 0, fast_cloud_to_others = 0, fast_others_to_cloud = 0;
 };
 
+// Expose the structure globally
 extern LinkDelays GlobalDelays;
 
+// Enum for all system messages
 enum MsgID {
     MSG_1_IS_CAN_FULL = 1,
     MSG_2_NO,
@@ -49,6 +51,7 @@ enum MsgID {
 class GarbageCollectionSystem : public cSimpleModule{
 
 protected:
+    // Figures for rendering all stats
     cTextFigure *delayStatsHeader = nullptr;
     cTextFigure *hostDelayStats = nullptr;
     cTextFigure *canDelayStats = nullptr;
@@ -56,6 +59,7 @@ protected:
     cTextFigure *cloudDelayStats = nullptr;
 
 public:
+    // Relevant system variables which are widely used across the system files
     cCanvas *canvas                         = nullptr;
     const char *configName                  = nullptr;
 
@@ -99,11 +103,15 @@ public:
     };
 
 protected:
+    // builting omnet overrides
     virtual void initialize() override;
     virtual void finish() override;
+
+    // For rendering the initial delays
     void renderInitialDelayStats();
 
 public:
+    // Two public methods, for creating a message with an enum value, and retireving a messages ID
     cMessage *createMessage(MsgID id);
     int getMsgId(cMessage *msg);
 };
