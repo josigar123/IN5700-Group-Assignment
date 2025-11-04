@@ -26,7 +26,7 @@ protected:
     bool canAcked = false;
     bool inRangeOfAnotherCan = false;
     bool anotherCanAcked = false;
-    // Resend timers
+    // Resend timers for polling cans after dropped messages
     cMessage *sendCanTimer = nullptr;
     cMessage *sendAnotherCanTimer = nullptr;
 
@@ -43,20 +43,29 @@ protected:
     cTextFigure *statusText = nullptr;
 
 protected:
+    // Omnett built-in overrides
     virtual void initialize() override;
     virtual void handleMessage(cMessage *msg) override;
-    virtual void receiveSignal(cComponent *source, simsignal_t signalID, bool value, cObject *details) override;
-    virtual void receiveSignal(cComponent *source, simsignal_t signalID, cObject *obj, cObject *details) override;
+    virtual void receiveSignal(cComponent *source, simsignal_t signalID, bool value, cObject *details) override; // onMobilityChanged emission, updates necessary components etc.
+    virtual void receiveSignal(cComponent *source, simsignal_t signalID, cObject *obj, cObject *details) override; // For custom messages, used in fast config only
 
-    virtual bool isInRangeOf(Node *target);
+    // Methods relating to ranges and re-sending
+    bool isInRangeOf(Node *target);
+    void handleSendTimer(cMessage *msg, bool &inRage, bool &acked, bool &atWp, const char *targetName, int gateIndex, int sendState, int altSendState);
+    void updateRangeState(bool nowInRange, bool &prevInRange, cMessage *timer, const char *name);
+
+    // Methods for handling message and state transmission
+    // handleFastFsmTransistions is not defined as its not necessary for the solution
     void handleSlowFsmTransitions(cMessage *msg);
     void handleEmptyFsmTransitions(cMessage *msg);
     void handleSlowMessageTransmissions(cMessage *msg);
     void handleFastMessageTransmissions(cMessage *msg);
     void handleEmptyMessageTransmissions(cMessage *msg);
-    void handleSendTimer(cMessage *msg, bool &inRage, bool &acked, bool &atWp, const char *targetName, int gateIndex, int sendState, int altSendState);
-    void updateRangeState(bool nowInRange, bool &prevInRange, cMessage *timer, const char *name);
+
+    // Re-renders statistics containing the data in the Stat counters variables
     void updateStatusText();
+
+    // Utility method so we dont DRY
     void ackReceived(bool &ackedFlag, cMessage *timer, int nextState, int &rcvdCounter);
 };
 
@@ -80,7 +89,7 @@ void HostNode::initialize(){
     sendAnotherCanTimer = new cMessage("sendAnotherCanTimer");
 
 
-    // ### SETUP STATUS TEXT ###
+    // Create initial text figures, and render
     statusText = new cTextFigure("hostStatus");
     statusText->setColor(cFigure::BLUE);
     statusText->setFont(cFigure::Font("Arial", 36));
@@ -92,28 +101,32 @@ void HostNode::initialize(){
         statusText->setPosition(cFigure::Point(pos.x - 500, pos.y - 100)); // Above the node
     }
 
+    // Add the status text to the system canvas
     system->canvas->addFigure(statusText);
 }
 
 void HostNode::handleMessage(cMessage *msg){
 
+    // For scheduling new messages if can msgs fail
     if (msg == sendCanTimer) {
         handleSendTimer(msg, inRangeOfCan, canAcked, atWaypointCan, "Can", 0, GarbageCollectionSystem::FAST_SEND_TO_CAN, GarbageCollectionSystem::SLOW_SEND_TO_CAN);
         return;
     }
 
+    // For scheduling new messages if anotherCan msgs fail
     if (msg == sendAnotherCanTimer) {
         handleSendTimer(msg, inRangeOfAnotherCan, anotherCanAcked, atWaypointAnotherCan, "AnotherCan", 1, GarbageCollectionSystem::FAST_SEND_TO_ANOTHER_CAN, GarbageCollectionSystem::SLOW_SEND_TO_ANOTHER_CAN);
         return;
     }
 
+    // Want to handle messages differently depending on which config is active, related handlers are called
     switch(system->fsmType){
         case GarbageCollectionSystem::FAST: handleFastMessageTransmissions(msg); break;
         case GarbageCollectionSystem::SLOW: handleSlowMessageTransmissions(msg); handleSlowFsmTransitions(msg); break;
         case GarbageCollectionSystem::EMPTY: handleEmptyMessageTransmissions(msg); handleEmptyFsmTransitions(msg); break;
     }
 
-    delete msg;
+    delete msg; // Resource cleanup
 }
 
 bool HostNode::isInRangeOf(Node* target) {
@@ -122,16 +135,18 @@ bool HostNode::isInRangeOf(Node* target) {
     // Host must have mobility, otherwise no need to check
     if (!mobility) return false;
 
+    // Acquire the hosts position
     auto posHost = mobility->getCurrentPosition();
 
     // Get target position
     double xOther, yOther, rangeOther;
 
+    // Extract the targets position, and coverage range
     xOther = target->par("x");
     yOther = target->par("y");
-
     rangeOther = target->par("range");
 
+    // Get the pos diff and use pythagoras
     double dx = posHost.x - xOther;
     double dy = posHost.y - yOther;
     double distance = std::sqrt(dx*dx + dy*dy);
@@ -157,6 +172,7 @@ void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, cObject *
                 auto pos = mobility->getCurrentPosition();
                 oval->setBounds(cFigure::Rectangle(pos.x - range, pos.y - range, range*2, range*2));
 
+                // Re-render status text position on Host movement
                 if (statusText) {
                     statusText->setPosition(cFigure::Point(pos.x - 500, pos.y - 100));
                 }
@@ -166,6 +182,7 @@ void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, cObject *
                 y = pos.y;
             }
 
+            // Check if we are in range of any can
             bool nowInRangeCan = isInRangeOf(system->canNode);
             bool nowInRangeAnotherCan = isInRangeOf(system->anotherCanNode);
 
@@ -173,6 +190,7 @@ void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, cObject *
             atWaypointCan = mobility->getCurrentPosition().distance(waypointCan) <= 1 ? true : false;
             atWaypointAnotherCan = mobility->getCurrentPosition().distance(waypointAnotherCan) <= 1 ? true : false;
 
+            // Want to set some range state vars, cancels message scheduling if we have passed a can and we are finished with it
             updateRangeState(nowInRangeCan, inRangeOfCan, sendCanTimer, "Can");
             updateRangeState(nowInRangeAnotherCan, inRangeOfAnotherCan, sendAnotherCanTimer, "AnotherCan");
         }
@@ -180,8 +198,8 @@ void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, cObject *
 
 void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, bool value, cObject *details){
 
-    // Load appropriate leg for next movement based on the signal received, this method is only in use in the FAST config, that is why you see leg loading
-    // in association with slow and empty concerning methods.
+    // Only triggers on the fast config, will set an appropriate leg based on emitted signal
+    // This signal handler removed the necessity of a handleFastFsmTransistion method, as we have for EMPTY and SLOW config
     if(signalID == Node::garbageCollectedSignalFromCan){
             cXMLElement *movementLeg = root->getElementById("2");
             mobility->setLeg(movementLeg);
@@ -199,12 +217,15 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
     FSM_Switch(*system->currentFsm){
         case FSM_Enter(GarbageCollectionSystem::SLOW_SEND_TO_CAN_CLOUD):
         {
+            // When this state is entered, we want to send a collect message to the cloud
             cMessage *req = system->createMessage(MSG_7_COLLECT_GARBAGE);
 
+            // Compute the dynamic delay and update global statistics
             simtime_t delay = system->slowCellularLink->computeDynamicDelay(this, system->cloudNode);
             GlobalDelays.slow_smartphone_to_others += delay.dbl();
             GlobalDelays.slow_others_to_cloud += delay.dbl();
 
+            // send the message and handle stat updates
             send(req, "gate$o", 2);
             sendHostSlow++;
             updateStatusText();
@@ -212,12 +233,15 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
         }
         case FSM_Enter(GarbageCollectionSystem::SLOW_SEND_TO_ANOTHER_CAN_CLOUD):
         {
+            // send the final collect msg to cloud
             cMessage *req = system->createMessage(MSG_9_COLLECT_GARBAGE);
 
+            // Compute dynamic delay and update global statistics
             simtime_t delay = system->slowCellularLink->computeDynamicDelay(this, system->cloudNode);
             GlobalDelays.slow_smartphone_to_others += delay.dbl();
             GlobalDelays.slow_others_to_cloud += delay.dbl();
 
+            // send the message and handle stat updates
             send(req, "gate$o", 2);
             sendHostSlow++;
             updateStatusText();
@@ -230,13 +254,15 @@ void HostNode::handleSlowMessageTransmissions(cMessage *msg){
 
     int msgId = system->getMsgId(msg);
 
+    // Handle received message based on the msgId
     switch(msgId){
+        // ACK from cans have beet retrieved, cancle rescheduling of self mesasges
         case MSG_3_YES: ackReceived(canAcked, sendCanTimer, system->SLOW_SEND_TO_CAN_CLOUD, rcvdHostFast); break;
         case MSG_6_YES: ackReceived(anotherCanAcked, sendAnotherCanTimer, system->SLOW_SEND_TO_ANOTHER_CAN_CLOUD, rcvdHostFast); break;
 
         case MSG_8_OK:
         {
-            // Received confirmation from cloud
+            // Received confirmation from cloud, increment status text, set the next leg to traverse and goto next state
             rcvdHostSlow++;
             updateStatusText();
             cXMLElement *movementLeg = root->getElementById("2");
@@ -247,7 +273,7 @@ void HostNode::handleSlowMessageTransmissions(cMessage *msg){
 
         case MSG_10_OK:
         {
-            // Received confirmation from cloud
+            // Received confirmation from cloud, increment status text, set the final leg to traverse and enter final state
             rcvdHostSlow++;
             updateStatusText();
             FSM_Goto(*system->currentFsm, GarbageCollectionSystem::SLOW_EXIT);
@@ -264,6 +290,7 @@ void HostNode::handleFastMessageTransmissions(cMessage *msg){
 
     int msgId = system->getMsgId(msg);
 
+    // Update stats based on rcvd message and cancel associated self-message
     switch(msgId){
     case MSG_3_YES:
         {
@@ -286,6 +313,7 @@ void HostNode::handleFastMessageTransmissions(cMessage *msg){
     }
 }
 
+// Set appropriate leg based on which state we enter
 void HostNode::handleEmptyFsmTransitions(cMessage *msg){
     FSM_Switch(*system->currentFsm){
         case FSM_Enter(GarbageCollectionSystem::EMPTY_SEND_TO_ANOTHER_CAN):
@@ -305,6 +333,7 @@ void HostNode::handleEmptyFsmTransitions(cMessage *msg){
 
 void HostNode::handleEmptyMessageTransmissions(cMessage *msg){
 
+    // Upon answer from can, mark them as acked, then cancel self-message
     int msgId = system->getMsgId(msg);
     switch(msgId){
         case MSG_2_NO: ackReceived(canAcked, sendCanTimer, GarbageCollectionSystem::EMPTY_SEND_TO_ANOTHER_CAN, rcvdHostFast); break;
@@ -317,7 +346,7 @@ void HostNode::handleSendTimer(cMessage *msg,
                                const char *targetName, int gateIndex,
                                int sendState, int altSendState)
 {
-    // If we’re done or out of range, just stop; do NOT reschedule.
+    // If we’re done or out of range, just stop, do NOT reschedule.
     if (acked || !inRange)
         return;
 
@@ -330,16 +359,19 @@ void HostNode::handleSendTimer(cMessage *msg,
         // gateIndex == 0 means we are sending to can, else (1) we send to  anotherCan
         cMessage *req = (gateIndex == 0) ? system->createMessage(MSG_1_IS_CAN_FULL) : system->createMessage(MSG_4_IS_CAN_FULL);
 
+        // Figure out which node to calculate delay to
         Node *nodeToCalculateDelayFor = gateIndex == 0 ? system->canNode : system->anotherCanNode;
         simtime_t delay = system->fastCellularLink->computeDynamicDelay(this, nodeToCalculateDelayFor);
         GlobalDelays.fast_smartphone_to_others += delay.dbl();
 
+        // gateIndex == 0: we are sending to can, else its anotherCan
         if(gateIndex == 0){
            GlobalDelays.connection_from_others_to_can += delay.dbl();
         }else{
             GlobalDelays.connection_from_others_to_another_can += delay.dbl();
         }
 
+        // Send and update stats
         send(req, "gate$o", gateIndex);
         sendHostFast++;
         updateStatusText();
@@ -349,6 +381,7 @@ void HostNode::handleSendTimer(cMessage *msg,
     scheduleAt(simTime() + 1, msg);
 }
 
+// A simple update method for re-rendering displayed text
 void HostNode::updateStatusText() {
     char buf[200];
     sprintf(buf, "sentHostFast: %d rcvdHostFast: %d sentHostSlow: %d rcvdHostSlow: %d",
@@ -359,18 +392,23 @@ void HostNode::updateStatusText() {
 }
 
 void HostNode::updateRangeState(bool nowInRange, bool &prevInRange, cMessage *timer, const char *name){
+    // Are we in range and have we not been in range before?
     if (nowInRange && !prevInRange) {
+        // Start self message scheduling when entering range
         prevInRange = true;
         oval->setLineColor(cFigure::GREEN);
         if (!timer->isScheduled())
             scheduleAt(simTime() + 1, timer);
     }
+    // Are we no longer in range and have we been in range? (We have passed the can)
     else if (!nowInRange && prevInRange) {
-        prevInRange = false;
+        // Cancel the send timer
+        prevInRange = false; // Set to false so if multiple rounds would occur (they wont) scheduling will still work
         cancelEvent(timer);
     }
 }
 
+// Ack a rcvd message from can and perform a state transition
 void HostNode::ackReceived(bool &ackedFlag, cMessage *timer, int nextState, int &rcvdCounter){
     rcvdCounter++;
     updateStatusText();

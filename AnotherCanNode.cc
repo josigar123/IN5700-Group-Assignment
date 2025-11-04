@@ -95,7 +95,6 @@ void AnotherCanNode::handleMessage(cMessage *msg){
             break;
         }
     }
-
     delete msg;
 }
 
