@@ -22,16 +22,22 @@ using namespace inet;
 // Forward declaration
 class GarbageCollectionSystem;
 
+// The base class for all system nodes
 class Node : public cSimpleModule
 {
 
 public:
+    // Public access of coords
     double x;
     double y;
 
 protected:
+    // All subclasses can interact with the system
     GarbageCollectionSystem *system;
-    cOvalFigure *oval          				= nullptr;
+    // Oval figure for coverage circle
+    cOvalFigure *oval = nullptr;
+
+    // range of coverage
     double range = 0;
 
 protected:

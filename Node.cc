@@ -16,7 +16,7 @@ using namespace omnetpp;
 using namespace inet;
 
 // GLobal structure for delay accumulations
-LinkDelays GlobalDelays;
+LinkDelays GlobalDelays; // Global struct from GarbagecollectionSystem
 
 // Register signals for fast config completed message tx
 simsignal_t Node::garbageCollectedSignalFromCan = cComponent::registerSignal("garbageCollectedFromCan");
@@ -28,6 +28,7 @@ void Node::initialize()
 {
     EV << "INITIALIZING NODE: " << getFullPath() << "\n";
 
+    // Get the syste,
     system = check_and_cast<GarbageCollectionSystem *>(getParentModule());
 
     // Extract module params
@@ -35,18 +36,15 @@ void Node::initialize()
     y = par("y");
     range = par("range");
 
+    // New oval and render it
     std::string figureName = std::string("coverage_") + getName();
     oval = new cOvalFigure(figureName.c_str());
 
     // Create coverage circle
     renderCoverageCircle(x, y);
-
-    EV << "Node " << getName() << " has channels: "
-       << (system->slowCellularLink ? "slowCell " : "")
-       << (system->fastCellularLink ? "fastCell " : "")
-       << (system->fastWiFiLink ? "wifi " : "") << "\n";
 }
 
+// Used for rendering the coverage circle given coords
 void Node::renderCoverageCircle(double x, double y){
     oval->setBounds(cFigure::Rectangle(x - range, y - range, range * 2, range * 2));
     oval->setLineColor(cFigure::BLACK);

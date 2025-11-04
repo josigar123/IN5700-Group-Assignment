@@ -6,9 +6,7 @@
  */
 #include "TurtleMobility.h"
 #include "Node.h"
-#include "DelayUtils.h"
 #include "inet/mobility/base/MobilityBase.h"
-#include "DelayUtils.h"
 #include <sstream>
 
 class HostNode : public Node, public cListener{
