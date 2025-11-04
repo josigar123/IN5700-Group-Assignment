@@ -16,6 +16,7 @@
 import inet.mobility.contract.IMobility;
 import inet.visualizer.canvas.integrated.IntegratedCanvasVisualizer;
 
+// Channel which the system links will inherit from with associated class and relevant params
 channel RealisticDelayChannel extends ned.DatarateChannel
 {
     parameters:
@@ -59,10 +60,13 @@ channel FastWiFiLink extends RealisticDelayChannel{
     @display("ls=blue");
 }
 
+// Simple module for turtle mob, extends the INETS TurtleMobility and asigngs a class with the module
 simple TurtleMobility extends inet.mobility.single.TurtleMobility{
 	@class(Extended::TurtleMobility);
 }
 
+// Defines the simple node module for the system
+// With relevant parameters which are interesting to access in the program
 simple Node
 {
     parameters:
@@ -78,6 +82,7 @@ simple Node
         inout gate[numGates];
 }
 
+// Can giving its icon and assigning it a signal and associated class
 simple CanNode extends Node {
     parameters:
         @class(CanNode);
@@ -85,6 +90,7 @@ simple CanNode extends Node {
         @signal[garbageCollectedFromCan](type=bool);
 }
 
+// AnotherCan giving its icon and assigning it a signal and associated class
 simple AnotherCanNode extends Node {
     parameters:
         @class(AnotherCanNode);
@@ -92,6 +98,7 @@ simple AnotherCanNode extends Node {
         @signal[garbageCollectedFromAnotherCan](type=bool);
 }
 
+// The cloud with a server icon and class
 simple CloudNode extends Node {
 
     parameters:
@@ -99,62 +106,69 @@ simple CloudNode extends Node {
         @display("i=device/server");
 }
 
+// Compound HostNode with a TurtleMobility submodule from the Extended namespace
 module HostNode extends Node
 {
     parameters:
         @class(HostNode);
         @display("i=block/wheelbarrow");
 
+	// Assign the turtleScript the first leg of our xml
     submodules:
         mobility: TurtleMobility{
         	turtleScript = xmldoc("turtle.xml", "movements//movement[@id='1']");
         }
 }
 
+// Define the actual network
 network GarbageCollectionSystem
 {
-    
+    // Class for the system as well as num hosts
    	parameters:
    	   @class(GarbageCollectionSystem);
    	   int numHosts = 1;
    	        	
     @display("bgb=3000,1250");
-
+	
+	// Draw the inner and outer road
     @figure[outerroad](type=polyline; points=1700,200,150,200,150,1100,1700,1100; lineColor=black; lineWidth=4);
     @figure[innerroad](type=polyline; points=1700,450,400,450,400,850,1700,850; lineColor=black; lineWidth=4);
 	
 
 	
     submodules:
+        // Visualizer for drawing trail and velocity arrow on host
         visualizer: IntegratedCanvasVisualizer{
         	@display("p=1500,50");
         }
+        // Init host
         host[numHosts]: HostNode {
             x = 1750;
             y = 300;
             range = 275;
         }
+        // Init can
         can: CanNode  {
             x = 500;
             y = 150;
             range = 320;
             numGates = 2;
-            @display("i=block/bucket");
         }
+        // Init anothercan
         anotherCan: AnotherCanNode {
             x = 573.885;
             y = 754.65;
         	range = 320;
         	numGates = 2;
-        	@display("i=block/bucket");
         }
+        // Init cloud
         cloud: CloudNode {
         	x = 1900;
         	y = 650;
         	range = 1600;
-        	@display("i=device/server");
         }
 	
+	// Define the connections on the gates to the other system nodes, use inout gates for compactness, appropriate link is added as seen
     connections:
         host[0].gate[0] <--> FastCellularLink <--> can.gate[0];
         host[0].gate[1] <-->  FastCellularLink <--> anotherCan.gate[0];
