@@ -20,19 +20,22 @@ protected:
     cTextFigure *statusText = nullptr;
 
 protected:
+    // Base omnet overrides
     virtual void initialize() override;
     virtual void handleMessage(cMessage *msg) override;
 
+    // method for updating status text
     void updateStatusText();
 };
 
 Define_Module(CloudNode);
 
 void CloudNode::initialize(){
-    Node::initialize();
+    Node::initialize(); // Init baseline from super
 
     // ### SETUP STATUS TEXT ONLY IF THERE IS GARBAGE IN THE CANS ###
     if(strcmp(system->configName, "NoGarbageInTheCans") != 0){
+        // set the text parameters
         statusText = new cTextFigure("cloudStatus");
         statusText->setColor(cFigure::BLUE);
         statusText->setFont(cFigure::Font("Arial", 36));
@@ -54,7 +57,9 @@ void CloudNode::handleMessage(cMessage *msg){
         {
             cMessage *resp = system->createMessage(MSG_8_OK);
 
+            // On a request if in the fast config, send the message to the Can
             if(strcmp(system->configName, "GarbageInTheCansAndFast") == 0){
+                // Send message update local and global stats
                 send(resp, "gate$o", 1);
                 sentCloudFast++;
                 rcvdCloudFast++;
@@ -72,16 +77,19 @@ void CloudNode::handleMessage(cMessage *msg){
                     rcvdCloudSlow++;
                     updateStatusText();
 
+                    // Calculate the delay when sending to the host and update global structure
                     simtime_t delay = system->slowCellularLink->computeDynamicDelay(this, system->hostNode);
                     GlobalDelays.slow_others_to_smartphone += delay.dbl();
                     GlobalDelays.slow_cloud_to_others += delay.dbl();
                 }
+
                 send(resp, "gate$o", 0);
             }
 
             break;
         }
 
+        // Exact same logic as the above case
         case MSG_9_COLLECT_GARBAGE:
         {
             cMessage *resp = system->createMessage(MSG_10_OK);
@@ -117,6 +125,7 @@ void CloudNode::handleMessage(cMessage *msg){
     delete msg;
 }
 
+// Util for rendering text
 void CloudNode::updateStatusText() {
     char buf[200];
     sprintf(buf, "sentCloudFast: %d rcvdCloudFast: %d sentCloudSlow: %d rcvdCloudSlow: %d",
