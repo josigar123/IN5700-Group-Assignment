@@ -34,7 +34,7 @@ void CloudNode::initialize(){
     Node::initialize(); // Init baseline from super
 
     // ### SETUP STATUS TEXT ONLY IF THERE IS GARBAGE IN THE CANS ###
-    if(strcmp(system->configName, "NoGarbageInTheCans") != 0){
+    if(system->fsmType != GarbageCollectionSystem::EMPTY){
         // set the text parameters
         statusText = new cTextFigure("cloudStatus");
         statusText->setColor(cFigure::BLUE);
@@ -58,34 +58,38 @@ void CloudNode::handleMessage(cMessage *msg){
             cMessage *resp = system->createMessage(MSG_8_OK);
 
             // On a request if in the fast config, send the message to the Can
-            if(strcmp(system->configName, "GarbageInTheCansAndFast") == 0){
-                // Send message update local and global stats
-                send(resp, "gate$o", 1);
-                sentCloudFast++;
-                rcvdCloudFast++;
-                updateStatusText();
-
-                simtime_t delay = system->fastWiFiLink->computeDynamicDelay(this, system->canNode);
-                GlobalDelays.connection_from_others_to_can += delay.dbl();
-                GlobalDelays.fast_cloud_to_others += delay.dbl();
-            }
-            else{
-
-                // Need to check if we need to update the text or not for Slow Config, or not at all for empty
-                if(statusText != nullptr){
-                    sentCloudSlow++;
-                    rcvdCloudSlow++;
+            switch(system->fsmType){
+                case GarbageCollectionSystem::FAST:
+                {
+                    // Send message update local and global stats
+                    send(resp, "gate$o", 1);
+                    sentCloudFast++;
+                    rcvdCloudFast++;
                     updateStatusText();
 
-                    // Calculate the delay when sending to the host and update global structure
-                    simtime_t delay = system->slowCellularLink->computeDynamicDelay(this, system->hostNode);
-                    GlobalDelays.slow_others_to_smartphone += delay.dbl();
-                    GlobalDelays.slow_cloud_to_others += delay.dbl();
+                    simtime_t delay = system->fastWiFiLink->computeDynamicDelay(this, system->canNode);
+                    GlobalDelays.connection_from_others_to_can += delay.dbl();
+                    GlobalDelays.fast_cloud_to_others += delay.dbl();
+                    break;
                 }
+                default: // SLOW OR EMPTY
+                {
+                    // Need to check if we need to update the text or not for Slow Config, or not at all for empty
+                    if(statusText != nullptr){
+                        sentCloudSlow++;
+                        rcvdCloudSlow++;
+                        updateStatusText();
 
-                send(resp, "gate$o", 0);
+                        // Calculate the delay when sending to the host and update global structure
+                        simtime_t delay = system->slowCellularLink->computeDynamicDelay(this, system->hostNode);
+                        GlobalDelays.slow_others_to_smartphone += delay.dbl();
+                        GlobalDelays.slow_cloud_to_others += delay.dbl();
+                    }
+
+                    send(resp, "gate$o", 0);
+                    break;
+                }
             }
-
             break;
         }
 
@@ -94,30 +98,35 @@ void CloudNode::handleMessage(cMessage *msg){
         {
             cMessage *resp = system->createMessage(MSG_10_OK);
 
-            if(strcmp(system->configName, "GarbageInTheCansAndFast") == 0){
-                send(resp, "gate$o", 2);
-                sentCloudFast++;
-                rcvdCloudFast++;
-                updateStatusText();
-
-                simtime_t delay = system->fastWiFiLink->computeDynamicDelay(this, system->anotherCanNode);
-                GlobalDelays.connection_from_others_to_another_can += delay.dbl();
-                GlobalDelays.fast_cloud_to_others += delay.dbl();
-            }
-            else{
-                if(statusText != nullptr){
-                    sentCloudSlow++;
-                    rcvdCloudSlow++;
+            switch(system->fsmType){
+                case GarbageCollectionSystem::FAST:
+                {
+                    send(resp, "gate$o", 2);
+                    sentCloudFast++;
+                    rcvdCloudFast++;
                     updateStatusText();
 
-                    simtime_t delay = system->slowCellularLink->computeDynamicDelay(this, system->hostNode);
-                    GlobalDelays.slow_others_to_smartphone += delay.dbl();
-                    GlobalDelays.slow_cloud_to_others += delay.dbl();
+                    simtime_t delay = system->fastWiFiLink->computeDynamicDelay(this, system->anotherCanNode);
+                    GlobalDelays.connection_from_others_to_another_can += delay.dbl();
+                    GlobalDelays.fast_cloud_to_others += delay.dbl();
+                    break;
                 }
+                default: // SLOW OR EMPTY
+                {
+                    if(statusText != nullptr){
+                        sentCloudSlow++;
+                        rcvdCloudSlow++;
+                        updateStatusText();
 
-                send(resp, "gate$o", 0);
+                        simtime_t delay = system->slowCellularLink->computeDynamicDelay(this, system->hostNode);
+                        GlobalDelays.slow_others_to_smartphone += delay.dbl();
+                        GlobalDelays.slow_cloud_to_others += delay.dbl();
+                    }
+
+                    send(resp, "gate$o", 0);
+                    break;
+                }
             }
-
             break;
         }
     }
