@@ -11,6 +11,7 @@ using namespace omnetpp;
 class RealisticDelayChannel : public cDatarateChannel
 {
   protected:
+    // Values to calculate delay upon
     simtime_t baseLatency;
     double jitterPercentage;
     double propSpeed;
@@ -19,12 +20,6 @@ class RealisticDelayChannel : public cDatarateChannel
     virtual void initialize() override;
 
   public:
-    // Make a public safe getter for the full current delay
-    simtime_t getCurrentDelay() const { return getDelay() + baseLatency; }
-
-    // Just get the base latency for the link
-    simtime_t getBaseLatency() const { return baseLatency; }
-
     // Used for calculating the dynamic delay for a link from src to dst, returns the delay as simtime_t
     simtime_t computeDynamicDelay(cModule *src, cModule *dst);
 };

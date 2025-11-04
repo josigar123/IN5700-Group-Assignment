@@ -5,12 +5,15 @@ Define_Channel(RealisticDelayChannel);
 
 void RealisticDelayChannel::initialize()
 {
-    cDatarateChannel::initialize();
+    cDatarateChannel::initialize(); // Init from super
+
+    // Fetch all relevant parameters to calculate delay from
     baseLatency = par("baseLatency");
     jitterPercentage = par("jitterPercentage");
     propSpeed = par("propSpeed");
 }
 
+// calculate delay from src to dst
 simtime_t RealisticDelayChannel::computeDynamicDelay(cModule *src, cModule *dst)
 {
     // Cast modules to Node pointers
@@ -20,7 +23,7 @@ simtime_t RealisticDelayChannel::computeDynamicDelay(cModule *src, cModule *dst)
     // Calculate the differences in coords
     double dx = srcNode->x - dstNode->x;
     double dy = srcNode->y - dstNode->y;
-    // Calculate the distance in meters
+    // Calculate the distance in meters, pythagoras
     double distanceM = sqrt(dx*dx + dy*dy);
 
     // baseLatency in seconds
