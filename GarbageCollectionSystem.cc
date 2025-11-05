@@ -99,7 +99,7 @@ void GarbageCollectionSystem::renderInitialDelayStats(){
     switch(fsmType){
     case SLOW: delayStatsHeader->setText("Cloud-based solution with slow messages"); break;
     case FAST: delayStatsHeader->setText("Fog-based solution with fast messages"); break;
-    case EMPTY: delayStatsHeader->setText("Fog-based solution with no messages"); break;
+    case EMPTY: delayStatsHeader->setText("No garbage solution"); break;
     }
 
 
