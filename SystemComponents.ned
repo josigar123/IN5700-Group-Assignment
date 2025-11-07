@@ -30,8 +30,8 @@ channel RealisticDelayChannel extends ned.DatarateChannel
 // to the cloud
 channel SlowCellularLink extends RealisticDelayChannel {
     parameters:
-        datarate = 50Mbps;
-        baseLatency = 85ms;
+        datarate = 200Mbps; // Ooklas Speedtest Connectivity Report July – December 2024, rounded down for Oslo
+        baseLatency = 30ms; // Ooklas Speedtest Connectivity Report July – December 2024 one-way delay approx 14ms for Oslo to speed testing centre, add 16ms extra to compensate for time to cloud or cloud to host
         jitterPercentage = 0.20; // +-20%
         propSpeed = 3e8mps;
     
@@ -41,8 +41,9 @@ channel SlowCellularLink extends RealisticDelayChannel {
 // This is the fast cellular link between a fog node (can) and host, we assume private 5G (MEC) for processing at the edge
 channel FastCellularLink extends RealisticDelayChannel {
     parameters:
-        datarate = 100Mbps;
-        baseLatency = 10ms;
+        datarate = 300Mbps; //https://www.hs-osnabrueck.de/fileadmin/HSOS/Forschung/Recherche/Laboreinrichtungen_und_Versuchsbetriebe/Labor_fuer_Hochfrequenztechnik_und_Mobilkommunikation/Mobilkomtagung/2022/Vortraege/18_Mallikarjun.pdf?utm_source=chatgpt.com selected as 
+        					// a value conservative value selected outside ideal environment where a peak of 870Mbps
+        baseLatency = 17ms; // Value from gNB-based Local Breakout for URLLC in industrial 5G see "related work"
         jitterPercentage = 0.08; // +-8%
         propSpeed = 3e8mps;
         
@@ -52,8 +53,8 @@ channel FastCellularLink extends RealisticDelayChannel {
 // This is the fast Wi-Fi link between a fog node (can) and the cloud, assume an enterprise Wi-Fi 6 access point
 channel FastWiFiLink extends RealisticDelayChannel{
     parameters:
-        datarate = 200Mbps;
-        baseLatency = 20ms;
+        datarate = 600Mbps; // https://www.cisco.com/c/en/us/support/docs/wireless-mobility/wireless-lan-wlan/212892-802-11ac-wireless-throughput-testing-and.html  row 12, column 80hz
+        baseLatency = 6.8ms; // From Wi-Fi Unleashed: Wi-Fi 7, 6 GHz, and Beyond, Carlos Cordeiro, PhD Intel Fellow and Wireless CTO (Client Computing Group) Intel Corporation June 2022 (Slide 79, divided by two for one-way latency + 3ms extra for getting to the cloud)
         jitterPercentage = 0.08; // +-8%
         propSpeed = 3e8mps;
         
@@ -133,8 +134,6 @@ network GarbageCollectionSystem
 	// Draw the inner and outer road
     @figure[outerroad](type=polyline; points=1700,200,150,200,150,1100,1700,1100; lineColor=black; lineWidth=4);
     @figure[innerroad](type=polyline; points=1700,450,400,450,400,850,1700,850; lineColor=black; lineWidth=4);
-	
-
 	
     submodules:
         // Visualizer for drawing trail and velocity arrow on host

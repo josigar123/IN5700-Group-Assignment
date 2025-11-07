@@ -100,7 +100,6 @@ void HostNode::initialize(){
         statusText->setPosition(cFigure::Point(pos.x - 500, pos.y - 100)); // Above the node
     }
 
-    // Add the status text to the system canvas
     system->canvas->addFigure(statusText);
 }
 
