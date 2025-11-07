@@ -156,7 +156,7 @@ network GarbageCollectionSystem
         // Init anothercan
         anotherCan: AnotherCanNode {
             x = 573.885;
-            y = 754.65;
+            y = 794.65;
         	range = 320;
         	numGates = 2;
         }
