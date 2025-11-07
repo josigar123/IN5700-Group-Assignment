@@ -29,6 +29,9 @@ protected:
     cMessage *sendCanTimer = nullptr;
     cMessage *sendAnotherCanTimer = nullptr;
 
+    // Named gate indeces
+    enum GateIndex {GATE_CAN = 0, GATE_ANOTHER_CAN = 1, GATE_CLOUD = 2};
+
     // Turtle wrapper for mobility control
     Extended::TurtleMobility *mobility;
     cXMLElement *root = getEnvir()->getXMLDocument("turtle.xml"); // Contains the legs for the turtle to complete
@@ -60,6 +63,10 @@ protected:
     void handleSlowMessageTransmissions(cMessage *msg);
     void handleFastMessageTransmissions(cMessage *msg);
     void handleEmptyMessageTransmissions(cMessage *msg);
+
+    // Methods for updating figure positions relative to HostNode
+    void updateCoverageCirclePlacement(Coord& pos);
+    void updateStatusTextPlacement(Coord& pos);
 
     // Re-renders statistics containing the data in the Stat counters variables
     void updateStatusText();
@@ -162,31 +169,22 @@ void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, cObject *
     //  - Check if we are at a waypoint
     //  - Manage send timers by checking if we have been in range and are now no longer in range (we have driven past)
     if (signalID == MobilityBase::mobilityStateChangedSignal) {
-            // cast to non-const MobilityBase
-            MobilityBase *m = check_and_cast<MobilityBase *>(source);
 
-            // Update coverage circle placement
-            if (mobility != nullptr) {
-                auto pos = mobility->getCurrentPosition();
-                oval->setBounds(cFigure::Rectangle(pos.x - range, pos.y - range, range*2, range*2));
+            auto pos = mobility->getCurrentPosition();
+            updateCoverageCirclePlacement(pos);
+            updateStatusTextPlacement(pos);
 
-                // Re-render status text position on Host movement
-                if (statusText) {
-                    statusText->setPosition(cFigure::Point(pos.x - 500, pos.y - 100));
-                }
-
-                // Update coords for module
-                x = pos.x;
-                y = pos.y;
-            }
+            // Update coords for module
+            x = pos.x;
+            y = pos.y;
 
             // Check if we are in range of any can
             bool nowInRangeCan = isInRangeOf(system->canNode);
             bool nowInRangeAnotherCan = isInRangeOf(system->anotherCanNode);
 
             // Check that host is at waypoint with some margin
-            atWaypointCan = mobility->getCurrentPosition().distance(waypointCan) <= 1 ? true : false;
-            atWaypointAnotherCan = mobility->getCurrentPosition().distance(waypointAnotherCan) <= 1 ? true : false;
+            atWaypointCan = mobility->getCurrentPosition().distance(waypointCan) <= 1;
+            atWaypointAnotherCan = mobility->getCurrentPosition().distance(waypointAnotherCan) <= 1;
 
             // Want to set some range state vars, cancels message scheduling if we have passed a can and we are finished with it
             updateRangeState(nowInRangeCan, inRangeOfCan, sendCanTimer, "Can");
@@ -197,6 +195,17 @@ void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, cObject *
                 oval->setLineColor(cFigure::BLACK);
             }
         }
+}
+
+void HostNode::updateCoverageCirclePlacement(Coord& pos){
+    oval->setBounds(cFigure::Rectangle(pos.x - range, pos.y - range, range*2, range*2));
+}
+
+void HostNode::updateStatusTextPlacement(Coord& pos){
+    // Re-render status text position on Host movement
+    if (statusText) {
+        statusText->setPosition(cFigure::Point(pos.x - 500, pos.y - 100));
+    }
 }
 
 void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, bool value, cObject *details){
@@ -224,12 +233,12 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
             cMessage *req = system->createMessage(MSG_7_COLLECT_GARBAGE);
 
             // Compute the dynamic delay and update global statistics
-            simtime_t delay = system->slowCellularLink->computeDynamicDelay(this, system->cloudNode);
-            GlobalDelays.slow_smartphone_to_others += delay.dbl();
-            GlobalDelays.slow_others_to_cloud += delay.dbl();
+            simtime_t cloudDelay = system->slowCellularLink->computeDynamicDelay(this, system->cloudNode);
+            GlobalDelays.slow_smartphone_to_others += cloudDelay.dbl();
+            GlobalDelays.slow_others_to_cloud += cloudDelay.dbl();
 
             // send the message and handle stat updates
-            send(req, "gate$o", 2);
+            send(req, "gate$o", GATE_CLOUD);
             sendHostSlow++;
             updateStatusText();
             break;
@@ -240,12 +249,12 @@ void HostNode::handleSlowFsmTransitions(cMessage *msg){
             cMessage *req = system->createMessage(MSG_9_COLLECT_GARBAGE);
 
             // Compute dynamic delay and update global statistics
-            simtime_t delay = system->slowCellularLink->computeDynamicDelay(this, system->cloudNode);
-            GlobalDelays.slow_smartphone_to_others += delay.dbl();
-            GlobalDelays.slow_others_to_cloud += delay.dbl();
+            simtime_t cloudDelay = system->slowCellularLink->computeDynamicDelay(this, system->cloudNode);
+            GlobalDelays.slow_smartphone_to_others += cloudDelay.dbl();
+            GlobalDelays.slow_others_to_cloud += cloudDelay.dbl();
 
             // send the message and handle stat updates
-            send(req, "gate$o", 2);
+            send(req, "gate$o", GATE_CLOUD);
             sendHostSlow++;
             updateStatusText();
             break;
@@ -367,8 +376,8 @@ void HostNode::handleSendTimer(cMessage *msg,
         simtime_t delay = system->fastCellularLink->computeDynamicDelay(this, nodeToCalculateDelayFor);
         GlobalDelays.fast_smartphone_to_others += delay.dbl();
 
-        // gateIndex == 0: we are sending to can, else its anotherCan
-        if(gateIndex == 0){
+        // gateIndex == GATE_CAN: we are sending to can, else its anotherCan
+        if(gateIndex == GATE_CAN){
            GlobalDelays.connection_from_others_to_can += delay.dbl();
         }else{
             GlobalDelays.connection_from_others_to_another_can += delay.dbl();

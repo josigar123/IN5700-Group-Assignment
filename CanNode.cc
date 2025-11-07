@@ -19,6 +19,8 @@ protected:
     int rcvdCanFast = 0;
     int numberOfLostCanMsgs = 0;
 
+    enum GateIndex {GATE_HOST = 0, GATE_CLOUD = 1};
+
     // Figure to render stats text
     cTextFigure *statusText = nullptr;
 
@@ -27,6 +29,7 @@ protected:
     virtual void initialize() override;
     virtual void handleMessage(cMessage *msg) override;
 
+    bool shouldDropMessage();
 
     void updateStatusText();
 };
@@ -64,56 +67,51 @@ void CanNode::handleMessage(cMessage *msg){
         case MSG_1_IS_CAN_FULL:
         {
             // Check if we should drop or process message
-            if(dropCount < dropLimit){
-                bubble("Lost message");
-                dropCount++;
-                numberOfLostCanMsgs++;
-                updateStatusText();
-                break;
-            }
+            if(shouldDropMessage()) break;
 
             // Create message based on config
-            cMessage *resp = nullptr;
-            switch(system->fsmType){
-                case GarbageCollectionSystem::EMPTY: resp = system->createMessage(MSG_2_NO); break;
-                default: resp = system->createMessage(MSG_3_YES); break;
-            }
-
+            cMessage *resp = system->fsmType == GarbageCollectionSystem::EMPTY ? system->createMessage(MSG_2_NO) : system->createMessage(MSG_3_YES);
 
             // Calculate sending delay
-            simtime_t delay = system->fastCellularLink->computeDynamicDelay(this, system->hostNode);
-            GlobalDelays.fast_others_to_smartphone += delay.dbl();
-            GlobalDelays.connection_from_can_to_others += delay.dbl();
+            simtime_t hostDelay = system->fastCellularLink->computeDynamicDelay(this, system->hostNode);
+            GlobalDelays.fast_others_to_smartphone += hostDelay.dbl();
+            GlobalDelays.connection_from_can_to_others += hostDelay.dbl();
 
             // Send and update status texts
-            send(resp, "gate$o", 0);
+            send(resp, "gate$o", GATE_HOST);
             sendCanFast++;
             rcvdCanFast++;
             updateStatusText();
 
             // Send message simultaneously to cloud if we have the fast config
-            cMessage *cloudMsg = nullptr;
-            switch(system->fsmType){
-                case GarbageCollectionSystem::FAST:
-                    {
-                        // Send message and update local and global stats
-                        cloudMsg = system->createMessage(MSG_7_COLLECT_GARBAGE);
-                        send(cloudMsg, "gate$o", 1);
-                        sendCanFast++;
-                        updateStatusText();
+            if(system->fsmType == GarbageCollectionSystem::FAST){
+                // Send message and update local and global stats
+                cMessage *cloudMsg = system->createMessage(MSG_7_COLLECT_GARBAGE);
+                send(cloudMsg, "gate$o", GATE_CLOUD);
+                sendCanFast++;
+                updateStatusText();
 
-                        simtime_t delay = system->fastWiFiLink->computeDynamicDelay(this, system->cloudNode);
-                        GlobalDelays.fast_others_to_cloud += delay.dbl();
-                        GlobalDelays.connection_from_can_to_others += delay.dbl();
-                        break;
-                    }
-                default: break;
+                simtime_t cloudDelay = system->fastWiFiLink->computeDynamicDelay(this, system->cloudNode);
+                GlobalDelays.fast_others_to_cloud += cloudDelay.dbl();
+                GlobalDelays.connection_from_can_to_others += cloudDelay.dbl();
             }
+
             break;
         }
     }
 
     delete msg;
+}
+
+bool CanNode::shouldDropMessage(){
+    if (dropCount < dropLimit) {
+        bubble("Lost message");
+        dropCount++;
+        numberOfLostCanMsgs++;
+        updateStatusText();
+        return true;
+    }
+    return false;
 }
 
 // Util for text render
