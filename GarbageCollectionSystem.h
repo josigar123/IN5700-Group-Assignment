@@ -57,11 +57,11 @@ protected:
     cTextFigure *canDelayStats = nullptr;
     cTextFigure *anotherCanDelayStats = nullptr;
     cTextFigure *cloudDelayStats = nullptr;
-    static constexpr int HORIZONTAL_PLACEMENT = 2200;
+    static constexpr int HORIZONTAL_PLACEMENT = 2350;
     static constexpr int VERTICAL_HEADER_PLACEMENT = 25;
     static constexpr int VERTICAL_BODY_PLACEMENT = 150;
     static constexpr int VERTICAL_BODY_STEP_SIZE = 100;
-    static constexpr int FONT_SIZE = 30;
+    static constexpr int FONT_SIZE = 35;
 
 public:
     // Relevant system variables which are widely used across the system files
