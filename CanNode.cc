@@ -107,6 +107,7 @@ void CanNode::handleMessage(cMessage *msg){
                         GlobalDelays.connection_from_can_to_others += delay.dbl();
                         break;
                     }
+                default: break;
             }
             break;
         }

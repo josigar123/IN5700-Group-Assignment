@@ -99,6 +99,7 @@ void AnotherCanNode::handleMessage(cMessage *msg){
                     GlobalDelays.fast_others_to_cloud += delay.dbl();
                     break;
                 }
+                default: break;
             }
             break;
         }
