@@ -129,7 +129,7 @@ network GarbageCollectionSystem
    	   @class(GarbageCollectionSystem);
    	   int numHosts = 1;
    	        	
-    @display("bgb=3000,1250");
+    @display("bgb=3300,1250");
 	
 	// Draw the inner and outer road
     @figure[outerroad](type=polyline; points=1700,200,150,200,150,1100,1700,1100; lineColor=black; lineWidth=4);

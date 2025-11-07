@@ -57,6 +57,11 @@ protected:
     cTextFigure *canDelayStats = nullptr;
     cTextFigure *anotherCanDelayStats = nullptr;
     cTextFigure *cloudDelayStats = nullptr;
+    static constexpr int HORIZONTAL_PLACEMENT = 2200;
+    static constexpr int VERTICAL_HEADER_PLACEMENT = 25;
+    static constexpr int VERTICAL_BODY_PLACEMENT = 150;
+    static constexpr int VERTICAL_BODY_STEP_SIZE = 100;
+    static constexpr int FONT_SIZE = 30;
 
 public:
     // Relevant system variables which are widely used across the system files
@@ -109,6 +114,8 @@ protected:
 
     // For rendering the initial delays
     void renderInitialDelayStats();
+
+    cTextFigure *makeStatFigure(const char* name, int stepMultiplier);
 
 public:
     // Two public methods, for creating a message with an enum value, and retireving a messages ID

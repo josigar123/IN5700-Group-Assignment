@@ -93,8 +93,8 @@ int GarbageCollectionSystem::getMsgId(cMessage *msg){
 // Render empty statistics initially
 void GarbageCollectionSystem::renderInitialDelayStats(){
     delayStatsHeader = new cTextFigure("headerDelayStats");
-    delayStatsHeader->setFont(cFigure::Font("Arial", 30, omnetpp::cAbstractImageFigure::FONT_BOLD));
-    delayStatsHeader->setPosition(cFigure::Point(2100, 25));
+    delayStatsHeader->setFont(cFigure::Font("Arial", FONT_SIZE, omnetpp::cAbstractImageFigure::FONT_BOLD));
+    delayStatsHeader->setPosition(cFigure::Point(HORIZONTAL_PLACEMENT, VERTICAL_HEADER_PLACEMENT));
 
     switch(fsmType){
     case SLOW: delayStatsHeader->setText("Cloud-based solution with slow messages"); break;
@@ -103,21 +103,10 @@ void GarbageCollectionSystem::renderInitialDelayStats(){
     }
 
 
-    hostDelayStats = new cTextFigure("headerDelayStats");
-    hostDelayStats->setFont(cFigure::Font("Arial", 30));
-    hostDelayStats->setPosition(cFigure::Point(2100, 150));
-
-    canDelayStats = new cTextFigure("canDelayStats");
-    canDelayStats->setFont(cFigure::Font("Arial", 30));
-    canDelayStats->setPosition(cFigure::Point(2100, 350));
-
-    anotherCanDelayStats = new cTextFigure("anotherCanDelayStats");
-    anotherCanDelayStats->setFont(cFigure::Font("Arial", 30));
-    anotherCanDelayStats->setPosition(cFigure::Point(2100, 450));
-
-    cloudDelayStats = new cTextFigure("cloudDelayStats");
-    cloudDelayStats->setFont(cFigure::Font("Arial", 30));
-    cloudDelayStats->setPosition(cFigure::Point(2100, 550));
+    hostDelayStats = makeStatFigure("hostDelayStats", 0);
+    canDelayStats = makeStatFigure("canDelayStats", 2);
+    anotherCanDelayStats = makeStatFigure("anotherCanDelayStats", 3);
+    cloudDelayStats = makeStatFigure("cloudDelayStats", 4);
 
     hostDelayStats->setText("Slow connection from the smartphone to others (time it takes) = \n"
                             "Slow connection from others to the smartphone (time it takes) = \n"
@@ -140,6 +129,15 @@ void GarbageCollectionSystem::renderInitialDelayStats(){
     canvas->addFigure(canDelayStats);
     canvas->addFigure(anotherCanDelayStats);
     canvas->addFigure(cloudDelayStats);
+}
+
+// A helper for placing text with even spacing and parameters
+cTextFigure *GarbageCollectionSystem::makeStatFigure(const char* name, int stepMultiplier){
+    auto fig = new cTextFigure(name);
+    fig->setFont(cFigure::Font("Arial", FONT_SIZE));
+    fig->setPosition(cFigure::Point(HORIZONTAL_PLACEMENT,
+        VERTICAL_BODY_PLACEMENT + stepMultiplier * VERTICAL_BODY_STEP_SIZE));
+    return fig;
 }
 
 // Simply writes to a stream based on which config is active, the final delay values and sets the figure text with final info
