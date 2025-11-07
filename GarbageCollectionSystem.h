@@ -57,7 +57,7 @@ protected:
     cTextFigure *canDelayStats = nullptr;
     cTextFigure *anotherCanDelayStats = nullptr;
     cTextFigure *cloudDelayStats = nullptr;
-    static constexpr int HORIZONTAL_PLACEMENT = 2350;
+    static constexpr int HORIZONTAL_PLACEMENT = 2310;
     static constexpr int VERTICAL_HEADER_PLACEMENT = 25;
     static constexpr int VERTICAL_BODY_PLACEMENT = 150;
     static constexpr int VERTICAL_BODY_STEP_SIZE = 100;

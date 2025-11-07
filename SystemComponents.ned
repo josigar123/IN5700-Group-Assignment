@@ -38,7 +38,7 @@ channel SlowCellularLink extends RealisticDelayChannel {
     @display("ls=red");
 }
 
-// This is the fast cellular link between a fog node (can) and host, we assume private 5G (MEC) for processing at the edge
+// This is the fast cellular link between a fog node (can) and host, we assume private 5G for processing at the edge
 channel FastCellularLink extends RealisticDelayChannel {
     parameters:
         datarate = 300Mbps; //https://www.hs-osnabrueck.de/fileadmin/HSOS/Forschung/Recherche/Laboreinrichtungen_und_Versuchsbetriebe/Labor_fuer_Hochfrequenztechnik_und_Mobilkommunikation/Mobilkomtagung/2022/Vortraege/18_Mallikarjun.pdf?utm_source=chatgpt.com selected as 
@@ -164,7 +164,7 @@ network GarbageCollectionSystem
         cloud: CloudNode {
         	x = 1900;
         	y = 650;
-        	range = 1600;
+        	range = 1650;
         }
 	
 	// Define the connections on the gates to the other system nodes, use inout gates for compactness, appropriate link is added as seen

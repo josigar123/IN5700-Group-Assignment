@@ -191,6 +191,11 @@ void HostNode::receiveSignal(cComponent *source, simsignal_t signalID, cObject *
             // Want to set some range state vars, cancels message scheduling if we have passed a can and we are finished with it
             updateRangeState(nowInRangeCan, inRangeOfCan, sendCanTimer, "Can");
             updateRangeState(nowInRangeAnotherCan, inRangeOfAnotherCan, sendAnotherCanTimer, "AnotherCan");
+
+            // Re-set colour if we´ve exited range of both cans
+            if(!nowInRangeCan && !nowInRangeAnotherCan){
+                oval->setLineColor(cFigure::BLACK);
+            }
         }
 }
 
